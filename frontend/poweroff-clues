@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Set the name of the container that acts as the server
+EC4DOCK_SERVERNAME=${EC4DOCK_SERVERNAME:-torqueserver}
+EC4DOCK_WN_IMAGENAME=${EC4DOCK_WN_IMAGENAME:-torque:wn}
+
+[ $# -ne 1 ] && echo "usage: $0 <nodenameid>" && exit 1
+WN_NAME=$1
+
+# Get the server IP address
+docker inspect $WN_NAME > /dev/null 2> /dev/null
+[ $? -ne 0 ] && echo "could not find any container with name $WN_NAME" && exit 1
+
+docker stop $WN_NAME > /dev/null 2> /dev/null
+[ $? -ne 0 ] && echo "could not stop container with name $WN_NAME" && exit 1
+
+docker rm $WN_NAME > /dev/null 2> /dev/null
+[ $? -ne 0 ] && echo "could not remove container with name $WN_NAME"
+
+# Finally we add the node in the torque server
+/opt/ec4docker/remove-node $WN_NAME
