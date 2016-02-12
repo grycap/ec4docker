@@ -1,0 +1,41 @@
+#!/bin/bash
+EC4DOCK_SERVERIP=${EC4DOCK_SERVERIP:-127.0.0.1}
+EC4DOCK_SERVERNAME=${EC4DOCK_SERVERNAME:-torqueserver}
+
+# We know the path of the default installation of torque
+TORQUE_PATH=/var/spool/torque
+
+# We tell torque which is the server name
+echo $EC4DOCK_SERVERNAME > /etc/torque/server_name
+
+# And also set the IP for the server name
+echo "$EC4DOCK_SERVERIP torqueserver" >> /etc/hosts
+
+# Now we'll configure MOM
+cat > ${TORQUE_PATH}/mom_priv/config << EOF
+\$clienthost $EC4DOCK_SERVERNAME
+\$max_conn_timeout_micro_sec 10000
+\$mom_host $(hostname)
+\$status_update_time 30
+EOF
+
+# Finally, let's restart the services
+while [ "$(pgrep pbs_mom)" != "" ]; do
+        service torque-mom stop
+        sleep 3
+done
+
+while [ "$(pgrep pbs_mom)" == "" ]; do
+        service torque-mom start
+        sleep 3
+done
+
+# Ensure that ssh is started
+service ssh start
+
+# Now we start nfs and mount home
+/etc/init.d/rpcbind restart
+mount -t nfs ${EC4DOCK_SERVERNAME}:/home /home
+
+# And get into bash in order to set the container alive forever
+/bin/bash

@@ -1,0 +1,44 @@
+#!/bin/bash
+source $(dirname $0)/ec4docker.config
+
+EC4DOCK_SERVERNAME=${EC4DOCK_SERVERNAME:-torqueserver}
+EC4DOCK_NODEBASENAME=${EC4DOCK_NODEBASENAME:-ec4docknode}
+
+function find_nodes() {
+        IPADDR=$1
+        POSSIBLE_NODES=$(docker ps --format {{.Names}} | grep "$EC4DOCK_NODEBASENAME")
+        for N in $POSSIBLE_NODES; do
+                VARS=$(docker inspect -f '{{.Config.Env}}' $N | tr -d '[]' | tr ' ' '\n');
+                for V in $VARS; do
+                        IFS=\= read VAR VALUE <<< $V
+                        if [ "$VAR" == "EC4DOCK_SERVERIP" -a "$VALUE" == "$IPADDR" ]; then
+                                echo -n "$N "
+                        fi
+                done
+        done
+}
+
+# We create the server
+IPADDR=$(docker inspect -f '{{.NetworkSettings.IPAddress}}' $EC4DOCK_SERVERNAME 2> /dev/null)
+
+if [ $? -eq 0 ]; then
+        echo "A container with name $EC4DOCK_SERVERNAME already exists"
+        WNS=$(find_nodes $IPADDR)
+        if [ "$WNS" != "" ]; then
+                echo "WARNING: Nodes '$WNS' seem to be part of the cluster"
+        fi
+        read -p "Do you want me to kill container(s)? (y/N) " KILL
+        if [ "$KILL" == "y" ]; then
+                for WNNAME in $WNS; do
+                        echo "killing container $WNNAME"
+                        docker stop $WNNAME > /dev/null 2> /dev/null
+                        docker rm $WNNAME > /dev/null 2> /dev/null
+                done
+                echo "killing container $EC4DOCK_SERVERNAME"
+                docker stop $EC4DOCK_SERVERNAME > /dev/null 2> /dev/null
+                docker rm $EC4DOCK_SERVERNAME > /dev/null 2> /dev/null
+        else
+                exit 1
+        fi
+fi
+exit 0

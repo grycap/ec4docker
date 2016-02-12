@@ -1,0 +1,14 @@
+#!/bin/bash
+source $(dirname $0)/ec4docker.config
+
+EC4DOCK_SERVERNAME=${EC4DOCK_SERVERNAME:-torqueserver}
+EC4DOCK_MAXNODES=${EC4DOCK_MAXNODES:-4}
+EC4DOCK_FRONTEND_IMAGENAME=torque:frontend
+EC4DOCK_WN_IMAGENAME=torque:wn
+EC4DOCK_NODEBASENAME=ec4docknode
+#EC4DOCK_NODEBASENAME=vnode
+
+$(dirname $0)/terminate-cluster
+
+# We try to execute the container
+docker run --privileged -v /var/run/docker.sock:/var/run/docker.sock -v $(which docker):/bin/docker -e "EC4DOCK_WN_IMAGENAME=$EC4DOCK_WN_IMAGENAME" -e "EC4DOCK_SERVERNAME=$EC4DOCK_SERVERNAME" -e "EC4DOCK_MAXNODES=$EC4DOCK_MAXNODES" -e "EC4DOCK_NODEBASENAME=$EC4DOCK_NODEBASENAME" -h $EC4DOCK_SERVERNAME --name $EC4DOCK_SERVERNAME -id $EC4DOCK_FRONTEND_IMAGENAME

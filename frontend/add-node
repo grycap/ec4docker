@@ -1,0 +1,28 @@
+#!/bin/bash
+NODENAME=$1
+IPADDR=$2
+
+# We have to remove the entries in /etc/hosts that correspond to the node name
+cat /etc/hosts | sed "/$NODENAME/d" > /tmp/newhosts 
+
+# Now we add a new entry with the new IP address
+echo "$IPADDR $NODENAME $NODENAME.localdomain" >> /tmp/newhosts 
+
+# Let's set the new /etc/hosts file
+cp /tmp/newhosts /etc/hosts
+rm /tmp/newhosts 
+
+# And now we have to restart the torque server
+
+# First ensure that pbs_server is not running
+while [ "$(pgrep pbs_server)" != "" ]; do
+        service torque-server stop
+        sleep 3
+done
+
+# Now ensure that pbs_server is running
+while [ "$(pgrep pbs_server)" == "" ]; do
+        service torque-server start
+        sleep 3
+done
+exit 0
