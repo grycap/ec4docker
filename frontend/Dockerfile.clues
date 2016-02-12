@@ -16,3 +16,4 @@ RUN cd /opt/ && wget https://github.com/grycap/clues/archive/master.zip -O clues
 ADD ec4docker.py /usr/local/lib/python2.7/dist-packages/cluesplugins/
 ADD clues2.cfg /etc/clues2/
 ADD torque.cfg /var/spool/torque/
+ADD ./poweron-clues ./poweroff-clues /opt/ec4docker/
