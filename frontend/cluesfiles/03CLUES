@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# We have to start clues
+/etc/init.d/cluesd start

@@ -1,12 +1,14 @@
 #!/bin/bash
 
+# We'll get the configuration if it exists
+[ -f /etc/ec4docker/ec4docker.conf ] && source /etc/ec4docker/ec4docker.conf
+
 # Set the name of the container that acts as the server
 EC4DOCK_SERVERNAME=${EC4DOCK_SERVERNAME:-torqueserver}
 EC4DOCK_WN_IMAGENAME=${EC4DOCK_WN_IMAGENAME:-torque:wn}
-EC4DOCK_NODEBASENAME=${EC4DOCK_NODEBASENAME:-vnode}
 
 [ $# -ne 1 ] && echo "usage: $0 <nodenameid>" && exit 1
-WN_NAME=${EC4DOCK_NODEBASENAME}$1
+WN_NAME=$1
 
 # Get the server IP address
 EC4DOCK_SERVERIP=$(docker inspect -f '{{.NetworkSettings.IPAddress}}' $EC4DOCK_SERVERNAME)
@@ -22,3 +24,4 @@ WN_IPADDR=$(docker inspect -f '{{.NetworkSettings.IPAddress}}' $WN_CONTAINERNAME
 
 # Finally we add the node in the torque server
 /opt/ec4docker/add-node $WN_NAME $WN_IPADDR
+exit 0

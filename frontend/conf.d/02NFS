@@ -1,0 +1,9 @@
+#!/bin/bash
+
+cat >> /etc/exports << EOF
+/home ${EC4DOCK_NODEBASENAME}*(rw,sync,no_subtree_check,fsid=0,no_root_squash)
+EOF
+
+# Now we start the daemos related to nfs
+/etc/init.d/rpcbind restart
+/etc/init.d/nfs-kernel-server restart

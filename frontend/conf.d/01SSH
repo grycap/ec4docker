@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# And also ensure that the ssh server is started
+service ssh start
