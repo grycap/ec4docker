@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# Now we start nfs and mount home
+/etc/init.d/rpcbind restart
+mount -t nfs ${EC4DOCK_SERVERNAME}:/home /home

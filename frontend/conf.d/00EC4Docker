@@ -2,6 +2,7 @@
 export EC4DOCK_SERVERNAME=${EC4DOCK_SERVERNAME:-torqueserver}
 export EC4DOCK_MAXNODES=${EC4DOCK_MAXNODES:-4}
 export EC4DOCK_NODEBASENAME=${EC4DOCK_NODEBASENAME:-ec4docknode}
+export EC4DOCK_SERVERIP=${EC4DOCK_SERVERIP:-127.0.0.1}
 
 mkdir /etc/ec4docker
 cat > /etc/ec4docker/ec4docker.conf << EOF
@@ -10,15 +11,6 @@ EC4DOCK_MAXNODES=$EC4DOCK_MAXNODES
 EC4DOCK_NODEBASENAME=$EC4DOCK_NODEBASENAME
 EC4DOCK_WN_IMAGENAME=$EC4DOCK_WN_IMAGENAME
 EC4DOCK_FRONTEND_IMAGENAME=$EC4DOCK_FRONTEND_IMAGENAME
+EC4DOCK_SERVERIP=$EC4DOCK_SERVERIP
 EOF
 
-BASEDIR=$(dirname $0)
-if [ -d $BASEDIR/conf.d ]; then
-    for scriptname in $BASEDIR/conf.d/*; do
-        echo $scriptname
-        [ -x $scriptname ] && $scriptname
-    done
-fi
-
-# Finally, let's get into bash in order to not to finish this script and the container is alive forever
-/bin/bash

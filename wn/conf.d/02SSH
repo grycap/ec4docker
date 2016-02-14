@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# Ensure that ssh is started
+service ssh start

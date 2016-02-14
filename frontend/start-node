@@ -1,0 +1,13 @@
+#!/bin/bash
+# Now execute the scripts in the conf.d folder
+
+BASEDIR=$(dirname $0)
+if [ -d $BASEDIR/conf.d ]; then
+    for scriptname in $BASEDIR/conf.d/*; do
+        echo $scriptname
+        [ -x $scriptname ] && $scriptname
+    done
+fi
+
+# Finally, let's get into bash in order to not to finish this script and the container is alive forever
+/bin/bash
