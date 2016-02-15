@@ -1,4 +1,23 @@
 #!/bin/bash
+#
+# EC4Docker - Elastic Cluster for Docker
+# https://github.com/grycap/ec4docker
+#
+# Copyright (C) GRyCAP - I3M - UPV 
+# Developed by Carlos A. caralla@upv.es
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 
 # We'll get the configuration if it exists
 [ -f /etc/ec4docker/ec4docker.conf ] && source /etc/ec4docker/ec4docker.conf
@@ -14,6 +33,7 @@ WN_NAME=$1
 EC4DOCK_SERVERIP=$(docker inspect -f '{{.NetworkSettings.IPAddress}}' $EC4DOCK_SERVERNAME)
 [ $? -ne 0 ] && echo "could not get ip from server $EC4DOCK_SERVERNAME" && exit 1
 
+(
 # Create a new container
 WN_CONTAINERNAME=$(docker run -h $WN_NAME --privileged -e "EC4DOCK_SERVERIP=$EC4DOCK_SERVERIP" -e "EC4DOCK_SERVERNAME=$EC4DOCK_SERVERNAME" --name $WN_NAME -id $EC4DOCK_WN_IMAGENAME)
 [ $? -ne 0 ] && echo "could not create the new node $WN_NAME" && exit 1
@@ -24,4 +44,6 @@ WN_IPADDR=$(docker inspect -f '{{.NetworkSettings.IPAddress}}' $WN_CONTAINERNAME
 
 # Finally we add the node in the torque server
 /opt/ec4docker/add-node $WN_NAME $WN_IPADDR
+)&
+
 exit 0

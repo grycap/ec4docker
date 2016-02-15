@@ -1,26 +1,51 @@
 #!/bin/bash
+#
+# EC4Docker - Elastic Cluster for Docker
+# https://github.com/grycap/ec4docker
+#
+# Copyright (C) GRyCAP - I3M - UPV 
+# Developed by Carlos A. caralla@upv.es
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+# Read the configuration if it exists
 source $(dirname $0)/ec4docker.config
 
+# We set the default values if they are not set
 EC4DOCK_SERVERNAME=${EC4DOCK_SERVERNAME:-torqueserver}
 EC4DOCK_NODEBASENAME=${EC4DOCK_NODEBASENAME:-ec4docknode}
 
 function find_nodes() {
-        IPADDR=$1
-        POSSIBLE_NODES=$(docker ps --format {{.Names}} | grep "$EC4DOCK_NODEBASENAME")
-        for N in $POSSIBLE_NODES; do
-                VARS=$(docker inspect -f '{{.Config.Env}}' $N | tr -d '[]' | tr ' ' '\n');
-                for V in $VARS; do
-                        IFS=\= read VAR VALUE <<< $V
-                        if [ "$VAR" == "EC4DOCK_SERVERIP" -a "$VALUE" == "$IPADDR" ]; then
-                                echo -n "$N "
-                        fi
-                done
+    # We'll try to find any docker container with the corresponding name whose associated server has
+    #   the provided IP.
+    IPADDR=$1
+    POSSIBLE_NODES=$(docker ps --format {{.Names}} | grep "$EC4DOCK_NODEBASENAME")
+    for N in $POSSIBLE_NODES; do
+        VARS=$(docker inspect -f '{{.Config.Env}}' $N | tr -d '[]' | tr ' ' '\n');
+        for V in $VARS; do
+            IFS=\= read VAR VALUE <<< $V
+            if [ "$VAR" == "EC4DOCK_SERVERIP" -a "$VALUE" == "$IPADDR" ]; then
+                    echo -n "$N "
+            fi
         done
+    done
 }
 
-# We create the server
+# Check if the server exists and get its IP address
 IPADDR=$(docker inspect -f '{{.NetworkSettings.IPAddress}}' $EC4DOCK_SERVERNAME 2> /dev/null)
 
+# If the front-end exists, we'll try to terminate it
 if [ $? -eq 0 ]; then
         echo "A container with name $EC4DOCK_SERVERNAME already exists"
         WNS=$(find_nodes $IPADDR)

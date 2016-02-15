@@ -1,14 +1,39 @@
 #!/bin/bash
+#
+# EC4Docker - Elastic Cluster for Docker
+# https://github.com/grycap/ec4docker
+#
+# Copyright (C) GRyCAP - I3M - UPV 
+# Developed by Carlos A. caralla@upv.es
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+# Read the configuration if exists
 source $(dirname $0)/ec4docker.config
 
-EC4DOCK_SERVERNAME=${EC4DOCK_SERVERNAME:-torqueserver}
+# Set the default values if they are not set
+EC4DOCK_SERVERNAME=${EC4DOCK_SERVERNAME:-ec4docker}
 EC4DOCK_MAXNODES=${EC4DOCK_MAXNODES:-4}
-EC4DOCK_FRONTEND_IMAGENAME=${EC4DOCK_FRONTEND_IMAGENAME:-torque:frontend}
-EC4DOCK_WN_IMAGENAME=${EC4DOCK_WN_IMAGENAME:-torque:wn}
+EC4DOCK_FRONTEND_IMAGENAME=${EC4DOCK_FRONTEND_IMAGENAME:-ec4docker:frontend}
+EC4DOCK_WN_IMAGENAME=${EC4DOCK_WN_IMAGENAME:-ec4docker:wn}
 EC4DOCK_NODEBASENAME=${EC4DOCK_NODEBASENAME:-ec4docknode}
-#EC4DOCK_NODEBASENAME=vnode
 
+# We'll try to terminate the cluster if it exists
 $(dirname $0)/terminate-cluster
 
-# We try to execute the container
+# We execute the container
+# - we have to run it in privileged mode because of torque requirements
 docker run --privileged -v /var/run/docker.sock:/var/run/docker.sock -v $(which docker):/bin/docker -e "EC4DOCK_FRONTEND_IMAGENAME=$EC4DOCK_FRONTEND_IMAGENAME" -e "EC4DOCK_WN_IMAGENAME=$EC4DOCK_WN_IMAGENAME" -e "EC4DOCK_SERVERNAME=$EC4DOCK_SERVERNAME" -e "EC4DOCK_MAXNODES=$EC4DOCK_MAXNODES" -e "EC4DOCK_NODEBASENAME=$EC4DOCK_NODEBASENAME" -h $EC4DOCK_SERVERNAME --name $EC4DOCK_SERVERNAME -id $EC4DOCK_FRONTEND_IMAGENAME
+
+exit 0
