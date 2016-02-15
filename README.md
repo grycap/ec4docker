@@ -1,4 +1,4 @@
-# EC4Docker (Elastic Cluster 4 Docker)
+# EC4Docker (Elastic Cluster for Docker)
 
 __EC4Docker__ is a simple Torque based Elastic Cluster whose nodes are contaniers. There exists a front-end that can be accessed by ssh, and the internal _working nodes_ are powered on or off according to the needs (if the nodes are not used for a while, they are powered off, and they are powered on if they are needed).
 
