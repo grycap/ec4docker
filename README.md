@@ -19,8 +19,8 @@ Features of the cluster:
 You can build the _front-end_ and _working node_ docker images by issuing the following commands:
 
 ```bash
-docker build -t ec4docker:frontend -f frontend/Dockerfile.clues frontend/
-docker build -t ec4docker:wn wn
+docker build -t ec4docker:frontend frontend/
+docker build -t ec4docker:wn wn/
 ```
 
 The images will be built and registered in your local registry. Their names are _ec4dockerclues:frontend_ and _ec4docker:wn_.
@@ -28,13 +28,13 @@ The images will be built and registered in your local registry. Their names are 
 Alternatively you can build the non-elastic version: _ec4docker:frontend_ that does not install CLUES by issuing the following commands:
 
 ```bash
-docker build -t ec4docker:frontend -f frontend/Dockerfile frontend/
+docker build -t ec4docker:frontend -f frontend/Dockerfile.static frontend/
 docker build -t ec4docker:wn wn
 ```
 
 In this case you need to power the nodes on or of by hand (using the provided scripts in folder _/opt/ec4docker_).
 
-__NOTE__: you are advised to modify the Dockerfile files in order to include your libraries, applications, etc. to customize your cluster.
+__NOTE__: you are advised to modify the Dockerfile files in order to include your libraries, applications, etc. to customize your cluster. Another option is to build the provided Dockerfiles and create your owns that start from the created one (you can check the _FROM_ clause in the Dockerfile file).
 
 ## Configure the cluster
 You should edit the file _ec4docker.config_ file to set the name of your cluster (this name will be set for the front-end node in docker), the base name for the working nodes (they should be named as _basename_1, _basename_2, etc.) and the max amount of computing nodes. You must also set the names of the docker images according to the previous step.
@@ -91,3 +91,11 @@ __NOTE__: For the non-elasic version, you can power on some nodes from inside th
 $ /opt/ec4docker/poweron ec4dockernode1
 $ /opt/ec4docker/poweron ec4dockernode2
 ```
+
+## Troubleshooting
+
+If any of the docker containers fail (for any reason), please check the output of the command ```docker logs <container>```.
+
+Some common issues are:
+- __Docker fails at removing a container__ (i.e. docker rm command fails) because it is in use. In this case you __need to__ try to remove the container by hand or (under some circumnstances) restart the docker daemon.
+- __The nfsd module is not enabled__ and then the mount point for the working nodes is not enabled. Torque cannot write in the shared folder and the execution of commands fail. In this case you should try to enable nfsd module and restart the cluster in order to execute the bootstrapping process again.
