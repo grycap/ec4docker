@@ -63,17 +63,30 @@ __NOTE__: The settings of the clusters are those that are set in file _ec4docker
 __WARNING__: The cluster is created on a _Docker aside Docker_ approach. That means that the front-end will issue docker calls to create and to destroy the docker containers that will serve as working nodes from the cluster. But these docker containers will be created in the docker host that started the front-end. In order to use this approach, the docker communication socket and the docker binary from the host are shared with the container.
 
 ## Enter the cluster
-Once the front-end has been created you can enter into the front-end container by issuing a command like the next one (the name of the container depends on your configuration; i.e. the _ec4docker.config_ file):
+Once the front-end has been created you can enter into the front-end container and _su_ as the __ubuntu__ user (which is the only user created in the cluster). An example of the command like is provided next (the name of the container depends on your configuration; i.e. the _ec4docker.config_ file):
 
 ```bash
-$ docker exec -it torqueserver /bin/bash
+$ docker exec -it ec4docker /bin/bash
+root@ec4docker:/$ su - ubuntu
 ```
 
-Then you can _su_ as the __ubuntu__ user (which is the only user created in the cluster) and issue commands to the queue. CLUES will intercept the call and will power on some working nodes in the cluster.
+Altenatively you can ssh the front-end. The SSH is exposed in the creation of the frontend, so you can guess the port where the front-end will listen by using the _docker port_ command:
+
+```bash
+$ docker port ec4docker
+22/tcp -> 0.0.0.0:32770
+```
+
+In this example, you can ssh to _ubuntu@localhost_ at port _32770_ with a command like the next one (the default password is "ubuntu", and it is set in the Dockerfile):
+
+```bash
+$ ssh -p 32770 ubuntu@localhost
+```
+
+Now you can issue commands to the queue, and CLUES will intercept the call and will power on some working nodes in the cluster.
 
 An example is the next:
 ```bash
-$ su - ubuntu
 $ echo "hostname && sleep 10" | qsub
 1.ec4docker
 $ qstat                             
