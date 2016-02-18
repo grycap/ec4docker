@@ -19,6 +19,20 @@
 # limitations under the License.
 #
 
+function usage() {
+    echo "usage $0 [ --deploy-nodes | -d ] [ --help | -h ]"
+}
+
+DEPLOY_NODES=False
+while [ $# -gt 0 ]; do
+    case $1 in
+        --deploy-nodes | -d)    DEPLOY_NODES=True;;
+        --help | -h)            usage && exit 0;;
+        *)                      usage && exit 1;;
+    esac
+    shift
+done
+
 # Read the configuration if exists
 source $(dirname $0)/ec4docker.config
 
@@ -35,5 +49,20 @@ $(dirname $0)/terminate-cluster
 # We execute the container
 # - we have to run it in privileged mode because of torque requirements
 docker run -p 22 --privileged -v /var/run/docker.sock:/var/run/docker.sock -v $(which docker):/bin/docker -e "EC4DOCK_FRONTEND_IMAGENAME=$EC4DOCK_FRONTEND_IMAGENAME" -e "EC4DOCK_WN_IMAGENAME=$EC4DOCK_WN_IMAGENAME" -e "EC4DOCK_SERVERNAME=$EC4DOCK_SERVERNAME" -e "EC4DOCK_MAXNODES=$EC4DOCK_MAXNODES" -e "EC4DOCK_NODEBASENAME=$EC4DOCK_NODEBASENAME" -h $EC4DOCK_SERVERNAME --name $EC4DOCK_SERVERNAME -id $EC4DOCK_FRONTEND_IMAGENAME
+
+if [ "$DEPLOY_NODES" == "True" ]; then
+    echo "waiting a bit to deploy the frontend"
+    sleep 10s
+    for n in $(seq 1 $EC4DOCK_MAXNODES); do
+        NODENAME=${EC4DOCK_NODEBASENAME}${n}
+        echo -n "starting node $NODENAME ..."
+        docker exec $EC4DOCK_SERVERNAME /opt/ec4docker/poweron $NODENAME > /dev/null 2> /dev/null
+        if [ $? -eq 0 ]; then
+            echo -e "[\e[32msucceeded\e[0m]"
+        else
+            echo -e "[\e[31mfailed\e[0m]"
+        fi
+    done
+fi
 
 exit 0
