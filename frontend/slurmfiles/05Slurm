@@ -1,0 +1,38 @@
+#!/bin/bash
+#
+# EC4Docker - Elastic Cluster for Docker
+# https://github.com/grycap/ec4docker
+#
+# Copyright (C) GRyCAP - I3M - UPV 
+# Developed by Carlos A. caralla@upv.es
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+# Set a fake list of nodes
+for i in `seq 1 $EC4DOCK_MAXNODES`; do
+	item="${EC4DOCK_NODEBASENAME}${i}";
+        grep -q "\<${item}\>" /etc/hosts || echo "127.0.0.1 ${item}.localdomain ${item}" >> /etc/hosts;
+done
+echo "127.0.0.1 $(hostname)" >> /etc/hosts
+
+# Basic configuration of the computing nodes
+cat >> /usr/local/etc/slurm.conf << EOF
+ControlMachine=${EC4DOCK_SERVERNAME} 
+NodeName=${EC4DOCK_NODEBASENAME}[1-$EC4DOCK_MAXNODES] CPUs=1 State=UNKNOWN
+PartitionName=debug Nodes=${EC4DOCK_NODEBASENAME}[1-$EC4DOCK_MAXNODES] Default=YES MaxTime=INFINITE State=UP
+EOF
+
+# Ensure that slurm is on and that it reads the configuration
+pgrep slurmctld || nohup /usr/local/sbin/slurmctld > /dev/null 2>&1 &
+scontrol reconfig
