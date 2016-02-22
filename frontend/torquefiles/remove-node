@@ -20,7 +20,15 @@
 #
 
 NODENAME=$1
-IPADDR=$2
-CONTAINERNAME=$3
 
+# And now we have to restart the torque server
+while [ "$(pgrep pbs_server)" != "" ]; do
+        service torque-server stop
+        sleep 3
+done
+
+while [ "$(pgrep pbs_server)" == "" ]; do
+        service torque-server start
+        sleep 3
+done
 exit 0

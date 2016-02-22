@@ -19,11 +19,7 @@
 # limitations under the License.
 #
 
-cat >> /usr/local/etc/slurm.conf << EOF
-ControlMachine=${EC4DOCK_SERVERNAME} 
-EOF
-
 pgrep slurmd || slurmd
 scontrol reconfig
-scontrol update NodeName=${EC4DOCK_SERVERNAME} State=RESUME
+scontrol update NodeName=$(hostname) State=RESUME
 exit 0

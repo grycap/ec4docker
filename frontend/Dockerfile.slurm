@@ -68,7 +68,7 @@ RUN mkdir -p /var/spool/slurm /var/log/slurm /var/slurm/checkpoint && chown slur
 # Include the configuration and bootstrapping for slurm
 ADD ./slurmfiles/slurm.conf /usr/local/etc/
 ADD ./slurmfiles/04Munge ./slurmfiles/05Slurm /opt/ec4docker/conf.d/
-
+ADD ./slurmfiles/add-node ./slurmfiles/remove-node /opt/ec4docker/
 
 # -------------------------------------------------------------------
 # This is the part to install CLUES

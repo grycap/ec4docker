@@ -54,8 +54,14 @@ ADD ./poweron ./poweroff ./add-node ./remove-node /opt/ec4docker/
 
 ADD ./start-node /opt/ec4docker/
 ADD ./conf.d /opt/ec4docker/conf.d/
-ADD ./torquefiles/01Torque /opt/ec4docker/conf.d/
 ENTRYPOINT [ "/opt/ec4docker/start-node" ]
+
+# -------------------------------------------------------------------
+# This is the part of Torque
+# -------------------------------------------------------------------
+
+ADD ./torquefiles/01Torque /opt/ec4docker/conf.d/
+ADD ./torquefiles/add-node ./torquefiles/remove-node /opt/ec4docker/
 
 # -------------------------------------------------------------------
 # This is the part to install CLUES

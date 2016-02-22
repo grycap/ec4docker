@@ -19,6 +19,12 @@
 # limitations under the License.
 #
 
+RETRIES=5
+while [ $RETRIES -gt 0 -a ! -e /etc/munge/munge.key ]; do
+    RETRIES=$[ $RETRIES - 1 ]
+    sleep 1
+done
+
 # Configure munge
 chown munge:munge /etc/munge/munge.key
 chmod 0400 /etc/munge/munge.key
