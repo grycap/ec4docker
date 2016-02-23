@@ -25,28 +25,26 @@ MAINTAINER Carlos de Alfonso <caralla@upv.es>
 # This is the part to install the packages
 # -------------------------------------------------------------------
 
-# Basic files for NFS and SSH
-RUN apt-get update && apt-get install -y openssh-server nfs-common nfs-kernel-server
-
-# Packages to install torque
-RUN apt-get update && apt-get install -y torque-server torque-client torque-mom torque-pam g++ libtorque2-dev make 
+RUN apt-get update && apt-get install -y openssh-server nfs-common
 
 # -------------------------------------------------------------------
 # This is the part to enable SSH access
 # -------------------------------------------------------------------
 
-EXPOSE 22
 RUN useradd -m -s /bin/bash ubuntu
 RUN echo 'ubuntu:ubuntu' | chpasswd
 
-# -------------------------------------------------------------------
-# This is the part to install EC4Docker
-# -------------------------------------------------------------------
+#
+# Compile SLURM
+#
 
-# Packages to be able to run docker from inside the container
-RUN apt-get -y install libnfnetlink0 libsystemd-journal0 libapparmor1
+# Packages to install slurm
+RUN apt-get update && apt-get install -y libmunge2 libpq5 openssl-blacklist munge libmunge-dev gcc make
 
-ADD ./poweron ./poweroff ./add-node ./remove-node /opt/ec4docker/
+RUN wget http://www.schedmd.com/download/archive/slurm-14.11.3.tar.bz2 -O /tmp/slurm.tar.bz2 && cd /tmp && tar xjf slurm.tar.bz2 && cd /tmp/slurm-14.11.3 && ./configure --with-blcr=/usr/local/bin && make && make install
+RUN useradd -m -s /bin/bash slurm
+RUN echo 'slurm:slurm' | chpasswd
+RUN mkdir -p /var/spool/slurm /var/log/slurm /var/slurm/checkpoint && chown slurm:slurm /var/spool/slurm /var/log/slurm /var/slurm/checkpoint
 
 # -------------------------------------------------------------------
 # This is the part to install the bootstrapper
@@ -56,9 +54,10 @@ ADD ./start-node /opt/ec4docker/
 ADD ./conf.d /opt/ec4docker/conf.d/
 ENTRYPOINT [ "/opt/ec4docker/start-node" ]
 
-# -------------------------------------------------------------------
-# This is the part of Torque
-# -------------------------------------------------------------------
 
-ADD ./torquefiles/01Torque /opt/ec4docker/conf.d/
-ADD ./torquefiles/add-node ./torquefiles/remove-node /opt/ec4docker/
+# Include the configuration and bootstrapping for slurm
+ADD ./slurmfiles/slurm.conf /usr/local/etc/
+ADD ./slurmfiles/04Munge ./slurmfiles/05Slurm /opt/ec4docker/conf.d/
+
+
+

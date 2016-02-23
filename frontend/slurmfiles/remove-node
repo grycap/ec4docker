@@ -20,7 +20,5 @@
 #
 
 NODENAME=$1
-IPADDR=$2
-CONTAINERNAME=$3
-
+scontrol update NodeName=$NODENAME state=down reason="powered off by ec4docker"
 exit 0

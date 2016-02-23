@@ -19,11 +19,32 @@
 # limitations under the License.
 #
 
-# Read the configuration if it exists
-source $(dirname $0)/ec4docker.config
+function usage() {
+    echo "usage $0 [ [ --config-file | -f ] <config-file> ] [ --help | -h ]"
+}
+
+CONFIG_FILE=$(dirname $0)/ec4docker.config
+DEPLOY_NODES=False
+while [ $# -gt 0 ]; do
+    case $1 in
+        --config-file | -f)     [ $# -lt 2 ] && usage && exit 1
+                                CONFIG_FILE=$2
+                                shift;;
+        --help | -h)            usage && exit 0;;
+        *)                      usage && exit 1;;
+    esac
+    shift
+done
+
+# Read the configuration if exists
+if [ ! -e "$CONFIG_FILE" ]; then
+    echo "WARNING: file $CONFIG_FILE does not exist... ignoring and getting default variables" >&2
+else
+    source $CONFIG_FILE
+fi
 
 # We set the default values if they are not set
-EC4DOCK_SERVERNAME=${EC4DOCK_SERVERNAME:-torqueserver}
+EC4DOCK_SERVERNAME=${EC4DOCK_SERVERNAME:-ec4docker}
 EC4DOCK_NODEBASENAME=${EC4DOCK_NODEBASENAME:-ec4docknode}
 
 function find_nodes() {
@@ -53,7 +74,7 @@ if [ $? -eq 0 ]; then
                 echo "WARNING: Nodes '$WNS' seem to be part of the cluster"
         fi
         read -p "Do you want me to kill container(s)? (y/N) " KILL
-        if [ "$KILL" == "y" ]; then
+        if [ "$(echo $KILL | tr 'y' 'Y')" == "Y" ]; then
                 for WNNAME in $WNS; do
                         echo "killing container $WNNAME"
                         docker stop $WNNAME > /dev/null 2> /dev/null

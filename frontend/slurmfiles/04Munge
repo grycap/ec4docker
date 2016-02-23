@@ -19,8 +19,11 @@
 # limitations under the License.
 #
 
-NODENAME=$1
-IPADDR=$2
-CONTAINERNAME=$3
+# Configure munge
+create-munge-key < /dev/null
+chmod 0700 /var/log/munge
+chmod 0755 /var/log
 
+# Starting munge
+service munge restart
 exit 0

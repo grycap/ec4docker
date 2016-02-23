@@ -19,19 +19,20 @@
 # limitations under the License.
 #
 
-export EC4DOCK_SERVERNAME=${EC4DOCK_SERVERNAME:-torqueserver}
-export EC4DOCK_MAXNODES=${EC4DOCK_MAXNODES:-4}
-export EC4DOCK_NODEBASENAME=${EC4DOCK_NODEBASENAME:-ec4docknode}
-export EC4DOCK_SERVERIP=${EC4DOCK_SERVERIP:-127.0.0.1}
+# Set a fake list of nodes
+for i in `seq 1 $EC4DOCK_MAXNODES`; do
+	item="${EC4DOCK_NODEBASENAME}${i}";
+        grep -q "\<${item}\>" /etc/hosts || echo "127.0.0.1 ${item}.localdomain ${item}" >> /etc/hosts;
+done
+echo "127.0.0.1 $(hostname)" >> /etc/hosts
 
-mkdir /etc/ec4docker
-cat > /etc/ec4docker/ec4docker.conf << EOF
-EC4DOCK_SERVERNAME=$EC4DOCK_SERVERNAME
-EC4DOCK_MAXNODES=$EC4DOCK_MAXNODES
-EC4DOCK_NODEBASENAME=$EC4DOCK_NODEBASENAME
-EC4DOCK_WN_IMAGENAME=$EC4DOCK_WN_IMAGENAME
-EC4DOCK_FRONTEND_IMAGENAME=$EC4DOCK_FRONTEND_IMAGENAME
-EC4DOCK_SERVERIP=$EC4DOCK_SERVERIP
+# Basic configuration of the computing nodes
+cat >> /usr/local/etc/slurm.conf << EOF
+ControlMachine=${EC4DOCK_SERVERNAME} 
+NodeName=${EC4DOCK_NODEBASENAME}[1-$EC4DOCK_MAXNODES] CPUs=1 State=UNKNOWN
+PartitionName=debug Nodes=${EC4DOCK_NODEBASENAME}[1-$EC4DOCK_MAXNODES] Default=YES MaxTime=INFINITE State=UP
 EOF
 
-sleep 5
+# Ensure that slurm is on and that it reads the configuration
+pgrep slurmctld || nohup /usr/local/sbin/slurmctld > /dev/null 2>&1 &
+scontrol reconfig

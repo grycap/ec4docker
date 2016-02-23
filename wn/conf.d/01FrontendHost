@@ -19,8 +19,6 @@
 # limitations under the License.
 #
 
-NODENAME=$1
-IPADDR=$2
-CONTAINERNAME=$3
+# Set the IP for the server name
+echo "$EC4DOCK_SERVERIP $EC4DOCK_SERVERNAME" >> /etc/hosts
 
-exit 0

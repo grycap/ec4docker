@@ -23,4 +23,10 @@ NODENAME=$1
 IPADDR=$2
 CONTAINERNAME=$3
 
+docker cp /etc/munge/munge.key $CONTAINERNAME:/etc/munge/munge.key 2> /dev/null > /dev/null
+[ $? -ne 0 ] && echo "error staging in the munge keyfile" && exit 1
+
+docker cp /usr/local/etc/slurm.conf $CONTAINERNAME:/usr/local/etc/slurm.conf 2> /dev/null > /dev/null
+[ $? -ne 0 ] && echo "error staging in the slurm config file" && exit 1
+
 exit 0

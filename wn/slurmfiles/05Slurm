@@ -19,8 +19,7 @@
 # limitations under the License.
 #
 
-NODENAME=$1
-IPADDR=$2
-CONTAINERNAME=$3
-
+pgrep slurmd || slurmd
+scontrol reconfig
+scontrol update NodeName=$(hostname) State=RESUME
 exit 0

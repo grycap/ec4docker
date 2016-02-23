@@ -19,8 +19,5 @@
 # limitations under the License.
 #
 
-NODENAME=$1
-IPADDR=$2
-CONTAINERNAME=$3
-
-exit 0
+[ -f /etc/ec4docker/ec4docker.conf ] && source /etc/ec4docker/ec4docker.conf
+echo "SLURM_SERVER=$EC4DOCK_SERVERNAME" >> /etc/clues2/conf.d/plugin-slurm.cfg

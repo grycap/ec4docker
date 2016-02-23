@@ -41,3 +41,6 @@ RUN echo 'ubuntu:ubuntu' | chpasswd
 ADD ./start-node /opt/ec4docker/
 ADD ./conf.d /opt/ec4docker/conf.d/
 ENTRYPOINT [ "/opt/ec4docker/start-node" ]
+
+# Finally add the torque configuration
+ADD ./torquefiles/05Torque /opt/ec4docker/conf.d/
