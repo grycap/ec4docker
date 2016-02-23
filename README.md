@@ -1,6 +1,6 @@
 # EC4Docker (Elastic Cluster for Docker)
 
-__EC4Docker__ is a simple Torque based Elastic Cluster whose nodes are contaniers. There exists a front-end that can be accessed by ssh, and the internal _working nodes_ are powered on or off according to the needs (if the nodes are not used for a while, they are powered off, and they are powered on if they are needed).
+__EC4Docker__ is a simple Elastic Cluster whose nodes are contaniers. There exists a front-end that can be accessed by ssh, and the internal _working nodes_ are powered on or off according to the needs (if the nodes are not used for a while, they are powered off, and they are powered on if they are needed).
 
 Features of the cluster:
 - Front end that has SSH access.
@@ -9,27 +9,44 @@ Features of the cluster:
 - Self-managed elasticity by using [CLUES](https://github.com/grycap/clues).
 - Shared filesystem from frontend to working nodes by using NFS
 
+EC4Docker may seem a bit useless because it is currently deployed on a single cluster, but consider its integration with [Docker Swarm](https://www.docker.com/products/docker-swarm) and you'll have an Elastic Cluster that is deployed over a multi-node infrastructure.
+
 ## How to use it
-1. Create your front-end and working node docker images. 
+1. Create your front-end and working node docker images.
 2. Edit the _ec4docker.config_ file to configure the cluster.
 3. Use _setup-cluster_ script to start the cluster.
 4. Enter into the cluster.
  
 ## Building the docker images
-You can build the _front-end_ and _working node_ docker images by issuing the following commands:
+In first place, you need to chose the cluster manager middleware. Torque and SLURM are currently available, but you can create your own Dockerimage files according to your specific middleware.
+
+Once selected, you need to build the build the _front-end_ and _working node_ base images by issuing the following commands:
 
 ```bash
-docker build -t ec4docker:frontend frontend/
-docker build -t ec4docker:wn wn/
+docker build -f frontend/Dockerfile.clues -t ec4docker:frontend ./frontend/
+docker build -f wn/Dockerfile.wn -t ec4docker:wn wn/
 ```
 
-The images will be built and registered in your local registry. Their names are _ec4dockerclues:frontend_ and _ec4docker:wn_.
+Then you need to create the images that correspond to the middleware:
+* For the case of Torque, you can use the following commands:
+```bash
+docker build -f frontend/Dockerfile.torque -t ec4dtorque:frontend ./frontend/
+docker build -f wn/Dockerfile.torque -t ec4dtorque:wn wn/
+```
 
-Alternatively you can build the non-elastic version: _ec4docker:frontend_ that does not install CLUES by issuing the following commands:
+* For the case of SLURM, you can use the following commands:
+```bash
+docker build -f frontend/Dockerfile.slurm -t ec4dslurm:frontend ./frontend/
+docker build -f wn/Dockerfile.slurm -t ec4dslurm:wn wn/
+```
+
+The images will be built and registered in your local registry.
+
+Alternatively you can build the non-elastic version: by not installing CLUES in the frontend. In order to make it, you can create the base images issuing the following commands:
 
 ```bash
-docker build -t ec4docker:frontend -f frontend/Dockerfile.static frontend/
-docker build -t ec4docker:wn wn
+docker build -f frontend/Dockerfile.static -t ec4docker:frontend ./frontend/
+docker build -f wn/Dockerfile.wn -t ec4docker:wn wn/
 ```
 
 In this case you need to power the nodes on or of by hand (using the provided scripts in folder _/opt/ec4docker_).
@@ -37,18 +54,28 @@ In this case you need to power the nodes on or of by hand (using the provided sc
 __NOTE__: you are advised to modify the Dockerfile files in order to include your libraries, applications, etc. to customize your cluster. Another option is to build the provided Dockerfiles and create your owns that start from the created one (you can check the _FROM_ clause in the Dockerfile file).
 
 ## Configure the cluster
-You should edit the file _ec4docker.config_ file to set the name of your cluster (this name will be set for the front-end node in docker), the base name for the working nodes (they should be named as _basename_1, _basename_2, etc.) and the max amount of computing nodes. You must also set the names of the docker images according to the previous step.
+You should create a config file (_ec4docker.config_) to set the name of your cluster (this name will be set for the front-end node in docker), the base name for the working nodes (they should be named as _basename_1, _basename_2, etc.) and the max amount of computing nodes. You must also set the names of the docker images according to the previous step.
 
-A simple example for this file is:
+Two examples are provided:
+* The file _ec4docker-torque.config_ for the case of Torque:
 ```bash
 EC4DOCK_SERVERNAME=ec4docker
 EC4DOCK_MAXNODES=4
-EC4DOCK_FRONTEND_IMAGENAME=ec4docker:frontend
-EC4DOCK_WN_IMAGENAME=ec4docker:wn
+EC4DOCK_FRONTEND_IMAGENAME=ec4dtorque:frontend
+EC4DOCK_WN_IMAGENAME=ec4dtorque:wn
 EC4DOCK_NODEBASENAME=ec4dockernode
 ```
 
-In this file the cluster will be named _ec4docker_.
+* And the file _ec4docker-slurm.config_ for the case of Torque:
+```bash
+EC4DOCK_SERVERNAME=ec4docker
+EC4DOCK_MAXNODES=4
+EC4DOCK_FRONTEND_IMAGENAME=ec4dslurm:frontend
+EC4DOCK_WN_IMAGENAME=ec4dslurm:wn
+EC4DOCK_NODEBASENAME=ec4dockernode
+```
+
+__NOTE__: In this file the cluster will be named _ec4docker_ and the maximum number of working nodes is set to 4. You are advised to change the name of your frontend and the amount of working nodes that will be available.
 
 ## Create the cluster
 You can use the script _setup-cluster_ to create the front-end of the cluster, from the corresponding docker image. If the cluster already exists, this script will ask you to kill it.
@@ -58,7 +85,12 @@ __IMPORTANT__: In order to be able to use the NFS shared filesystem, you __MUST_
 $ modprobe nfsd
 ```
 
-__NOTE__: The settings of the clusters are those that are set in file _ec4docker.config_ file. Take note of those settings because you will need them in order to access the cluster. In special, the name of the cluster which is in _EC4DOCK_SERVERNAME_.
+In order to create your cluster, defined in _ec4docker-torque.config_ file, you can issue the following command:
+```bash
+$ ./setup-cluster -f ec4docker-torque.config
+```
+
+__NOTE__: The settings of the clusters are those that are set in file _ec4docker-torque.config_ file. Take note of those settings because you will need them in order to access the cluster. In special, the name of the cluster which is in _EC4DOCK_SERVERNAME_.
 
 __WARNING__: The cluster is created on a _Docker aside Docker_ approach. That means that the front-end will issue docker calls to create and to destroy the docker containers that will serve as working nodes from the cluster. But these docker containers will be created in the docker host that started the front-end. In order to use this approach, the docker communication socket and the docker binary from the host are shared with the container.
 
