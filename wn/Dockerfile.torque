@@ -18,37 +18,18 @@
 # limitations under the License.
 #
 
-FROM ubuntu
+FROM ec4docker:wn
 MAINTAINER Carlos de Alfonso <caralla@upv.es>
 
 # -------------------------------------------------------------------
 # This is the part to install the packages
 # -------------------------------------------------------------------
 
-# Basic files for NFS and SSH
-RUN apt-get update && apt-get install -y openssh-server nfs-common nfs-kernel-server
+RUN apt-get update && apt-get install -y torque-client torque-mom
 
 # -------------------------------------------------------------------
-# This is the part to enable SSH access
+# This is the part to install the bootstrapping
 # -------------------------------------------------------------------
 
-EXPOSE 22
-RUN useradd -m -s /bin/bash ubuntu
-RUN echo 'ubuntu:ubuntu' | chpasswd
-
-# -------------------------------------------------------------------
-# This is the part to install EC4Docker
-# -------------------------------------------------------------------
-
-# Packages to be able to run docker from inside the container
-RUN apt-get -y install libnfnetlink0 libsystemd-journal0 libapparmor1
-
-ADD ./poweron ./poweroff ./add-node ./remove-node /opt/ec4docker/
-
-# -------------------------------------------------------------------
-# This is the part to install the bootstrapper
-# -------------------------------------------------------------------
-
-ADD ./start-node /opt/ec4docker/
-ADD ./conf.d /opt/ec4docker/conf.d/
-ENTRYPOINT [ "/opt/ec4docker/start-node" ]
+# Finally add the torque configuration
+ADD ./torquefiles/05Torque /opt/ec4docker/conf.d/

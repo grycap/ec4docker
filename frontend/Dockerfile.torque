@@ -18,29 +18,29 @@
 # limitations under the License.
 #
 
-FROM ubuntu
+FROM ec4docker:frontend
 MAINTAINER Carlos de Alfonso <caralla@upv.es>
 
 # -------------------------------------------------------------------
-# This is the part to install the packages
+# This is the part to install the packages for torque
 # -------------------------------------------------------------------
 
-RUN apt-get update && apt-get install -y torque-client torque-mom openssh-server nfs-common
+# Packages to install torque
+RUN apt-get update && apt-get install -y torque-server torque-client torque-mom torque-pam
 
 # -------------------------------------------------------------------
-# This is the part to enable SSH access
+# This is the part of Torque
 # -------------------------------------------------------------------
 
-RUN useradd -m -s /bin/bash ubuntu
-RUN echo 'ubuntu:ubuntu' | chpasswd
+ADD ./torquefiles/01Torque /opt/ec4docker/conf.d/
+ADD ./torquefiles/add-node ./torquefiles/remove-node /opt/ec4docker/
 
 # -------------------------------------------------------------------
-# This is the part to install the bootstrapper
+# This is the part that engages EC4Docker with CLUES
 # -------------------------------------------------------------------
 
-ADD ./start-node /opt/ec4docker/
-ADD ./conf.d /opt/ec4docker/conf.d/
-ENTRYPOINT [ "/opt/ec4docker/start-node" ]
+# We set the pbs-wrapper for torque
+ADD torquefiles/torque.cfg /var/spool/torque/
 
-# Finally add the torque configuration
-ADD ./torquefiles/05Torque /opt/ec4docker/conf.d/
+# Now we put a standard configuration for CLUES
+ADD torquefiles/clues2.cfg /etc/clues2/
