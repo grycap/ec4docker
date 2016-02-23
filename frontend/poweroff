@@ -36,10 +36,10 @@ docker rm $WN_NAME > /dev/null 2> /dev/null
 [ $? -ne 0 ] && echo "could not remove container with name $WN_NAME"
 
 # We have to remove the entries in /etc/hosts that correspond to the node name
-cat /etc/hosts | sed "/${NODENAME}$/d" > /tmp/newhosts 
+cat /etc/hosts | sed "/${WN_NAME}$/d" > /tmp/newhosts 
 
 # Now we add a new entry with the new IP address
-echo "127.0.0.1 $NODENAME.localdomain $NODENAME" >> /tmp/newhosts 
+echo "127.0.0.1 $WN_NAME.localdomain $WN_NAME" >> /tmp/newhosts 
 
 # Let's set the new /etc/hosts file
 cp /tmp/newhosts /etc/hosts

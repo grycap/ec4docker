@@ -75,26 +75,33 @@ ADD ./slurmfiles/add-node ./slurmfiles/remove-node /opt/ec4docker/
 # -------------------------------------------------------------------
 
 # Firt we install the dependencies
-# RUN apt-get install -y python python-setuptools unzip vim && easy_install ply==3.6 web.py
+RUN apt-get install -y python python-setuptools unzip vim && easy_install ply==3.6 web.py
 
 # Now we need the cpyutils
 # RUN cd /opt/ && wget https://github.com/grycap/cpyutils/archive/master.zip -O cpyutils.zip && unzip cpyutils.zip && cd cpyutils-master && python setup.py install --record installed-files.txt
+RUN cd /opt/ && wget https://github.com/grycap/cpyutils/archive/enhanced-features.zip -O cpyutils.zip && unzip cpyutils.zip && cd cpyutils-enhanced-features && python setup.py install --record installed-files.txt
 
 # Finally we install CLUES
 # RUN cd /opt/ && wget https://github.com/grycap/clues/archive/master.zip -O clues.zip && unzip clues.zip && cd clues-master && python setup.py install --record installed-files.txt && chmod 755 /etc/clues2 && chmod -R 644 /etc/clues2/* && chmod 755 /etc/clues2/conf.d
+RUN cd /opt/ && wget https://github.com/grycap/clues/archive/information-system.zip -O clues.zip && unzip clues.zip && cd clues-information-system && python setup.py install --record installed-files.txt && chmod 755 /etc/clues2 && chmod -R 644 /etc/clues2/* && chmod 755 /etc/clues2/conf.d
 
 # -------------------------------------------------------------------
 # This is the part that engages EC4Docker with CLUES
 # -------------------------------------------------------------------
 
 # First we install the plugin
-# ADD cluesfiles/ec4docker.py /usr/local/lib/python2.7/dist-packages/cluesplugins/
-
-# We set the pbs-wrapper for torque
-# ADD cluesfiles/torque.cfg /var/spool/torque/
-
-# Now we put a standard configuration for CLUES
-# ADD cluesfiles/clues2.cfg /etc/clues2/
+ADD cluesfiles/ec4docker.py /usr/local/lib/python2.7/dist-packages/cluesplugins/
 
 # Add the start of CLUES to the bootstrapping process
-# ADD cluesfiles/04CLUES /opt/ec4docker/conf.d/
+ADD cluesfiles/50CLUES /opt/ec4docker/conf.d/
+
+# -------------------------------------------------------------------
+# This is the part that integrates SLURM and CLUES
+# -------------------------------------------------------------------
+RUN mv /usr/local/bin/sbatch /usr/local/bin/sbatch.o && mv /usr/local/bin/clues-slurm-wrapper /usr/local/bin/sbatch
+
+ADD slurmfiles/49CLUESSlurm /opt/ec4docker/conf.d/
+
+# Now we put a configuration for CLUES
+ADD slurmfiles/clues2.cfg /etc/clues2/
+ADD slurmfiles/plugin-slurm.cfg /etc/clues2/conf.d/

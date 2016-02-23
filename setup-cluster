@@ -20,13 +20,17 @@
 #
 
 function usage() {
-    echo "usage $0 [ --deploy-nodes | -d ] [ --help | -h ]"
+    echo "usage $0 [ --deploy-nodes | -d ] [ [ --config-file | -f ] <config-file> ] [ --help | -h ]"
 }
 
+CONFIG_FILE=$(dirname $0)/ec4docker.config
 DEPLOY_NODES=False
 while [ $# -gt 0 ]; do
     case $1 in
         --deploy-nodes | -d)    DEPLOY_NODES=True;;
+        --config-file | -f)     [ $# -lt 2 ] && usage && exit 1
+                                CONFIG_FILE=$2
+                                shift;;
         --help | -h)            usage && exit 0;;
         *)                      usage && exit 1;;
     esac
@@ -34,7 +38,11 @@ while [ $# -gt 0 ]; do
 done
 
 # Read the configuration if exists
-source $(dirname $0)/ec4docker.config
+if [ ! -e "$CONFIG_FILE" ]; then
+    echo "WARNING: file $CONFIG_FILE does not exist... ignoring and getting default variables" >&2
+else
+    source $CONFIG_FILE
+fi
 
 # Set the default values if they are not set
 EC4DOCK_SERVERNAME=${EC4DOCK_SERVERNAME:-ec4docker}
@@ -44,7 +52,7 @@ EC4DOCK_WN_IMAGENAME=${EC4DOCK_WN_IMAGENAME:-ec4docker:wn}
 EC4DOCK_NODEBASENAME=${EC4DOCK_NODEBASENAME:-ec4docknode}
 
 # We'll try to terminate the cluster if it exists
-$(dirname $0)/terminate-cluster
+$(dirname $0)/terminate-cluster -f $CONFIG_FILE
 
 # We execute the container
 # - we have to run it in privileged mode because of torque requirements

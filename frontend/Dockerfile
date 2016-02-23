@@ -87,7 +87,7 @@ ADD cluesfiles/ec4docker.py /usr/local/lib/python2.7/dist-packages/cluesplugins/
 ADD cluesfiles/torque.cfg /var/spool/torque/
 
 # Now we put a standard configuration for CLUES
-ADD cluesfiles/clues2.cfg /etc/clues2/
+ADD torquefiles/clues2.cfg /etc/clues2/
 
 # Add the start of CLUES to the bootstrapping process
-ADD cluesfiles/04CLUES /opt/ec4docker/conf.d/
+ADD cluesfiles/50CLUES /opt/ec4docker/conf.d/

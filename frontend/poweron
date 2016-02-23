@@ -43,10 +43,10 @@ WN_IPADDR=$(docker inspect -f '{{.NetworkSettings.IPAddress}}' $WN_CONTAINERNAME
 [ $? -ne 0 -o "$WN_IPADDR" == "" ] && echo "could not determine the IP address for the new node" && docker rm $(docker stop $WM_CONTAINERNAME) && exit 1
 
 # We have to remove the entries in /etc/hosts that correspond to the node name
-cat /etc/hosts | sed "/${NODENAME}$/d" > /tmp/newhosts 
+cat /etc/hosts | sed "/${WN_NAME}$/d" > /tmp/newhosts 
 
 # Now we add a new entry with the new IP address
-echo "$IPADDR $NODENAME.localdomain $NODENAME" >> /tmp/newhosts 
+echo "$WN_IPADDR $WN_NAME.localdomain $WN_NAME" >> /tmp/newhosts 
 
 # Let's set the new /etc/hosts file
 cp /tmp/newhosts /etc/hosts
