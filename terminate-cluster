@@ -25,11 +25,13 @@ function usage() {
 
 CONFIG_FILE=$(dirname $0)/ec4docker.config
 DEPLOY_NODES=False
+ASSUME_YES=False
 while [ $# -gt 0 ]; do
     case $1 in
         --config-file | -f)     [ $# -lt 2 ] && usage && exit 1
                                 CONFIG_FILE=$2
                                 shift;;
+	--yes | -y)		ASSUME_YES=True;;
         --help | -h)            usage && exit 0;;
         *)                      usage && exit 1;;
     esac
@@ -73,7 +75,11 @@ if [ $? -eq 0 ]; then
         if [ "$WNS" != "" ]; then
                 echo "WARNING: Nodes '$WNS' seem to be part of the cluster"
         fi
-        read -p "Do you want me to kill container(s)? (y/N) " KILL
+	if [ "$ASSUME_YES" != "True" ]; then
+	        read -p "Do you want me to kill container(s)? (y/N) " KILL
+	else
+		KILL=y
+	fi
         if [ "$(echo $KILL | tr 'y' 'Y')" == "Y" ]; then
                 for WNNAME in $WNS; do
                         echo "killing container $WNNAME"

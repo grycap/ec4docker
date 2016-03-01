@@ -25,9 +25,11 @@ function usage() {
 
 CONFIG_FILE=$(dirname $0)/ec4docker.config
 DEPLOY_NODES=False
+ASSUME_YES=False
 while [ $# -gt 0 ]; do
     case $1 in
         --deploy-nodes | -d)    DEPLOY_NODES=True;;
+	--yes | -y)		ASSUME_YES=True;;
         --config-file | -f)     [ $# -lt 2 ] && usage && exit 1
                                 CONFIG_FILE=$2
                                 shift;;
@@ -52,7 +54,11 @@ EC4DOCK_WN_IMAGENAME=${EC4DOCK_WN_IMAGENAME:-ec4docker:wn}
 EC4DOCK_NODEBASENAME=${EC4DOCK_NODEBASENAME:-ec4docknode}
 
 # We'll try to terminate the cluster if it exists
-$(dirname $0)/terminate-cluster -f $CONFIG_FILE
+if [ "$ASSUME_YES" == "True" ]; then
+	$(dirname $0)/terminate-cluster -f $CONFIG_FILE -y
+else
+	$(dirname $0)/terminate-cluster -f $CONFIG_FILE
+fi
 
 # We execute the container
 # - we have to run it in privileged mode because of torque requirements
