@@ -1,0 +1,187 @@
+#!/bin/bash
+#
+# EC4Docker - Elastic Cluster for Docker
+# https://github.com/grycap/ec4docker
+#
+# Copyright (C) GRyCAP - I3M - UPV 
+# Developed by Carlos A. caralla@upv.es
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+function usage() {
+    echo "
+    USAGE:
+        $0 < [--create|-c] [--deploy-nodes|-d] | [--terminate|-t] > [ [ --config-file | -f ] <config-file> ] [ --help | -h ]"
+    echo "
+# EC4Docker - Elastic Cluster for Docker
+# https://github.com/grycap/ec4docker
+#
+# Copyright (C) GRyCAP - I3M - UPV 
+# Developed by Carlos A. caralla@upv.es
+#
+# Licensed under the Apache License, Version 2.0 (the \"License\");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an \"AS IS\" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+"
+}
+
+CONFIG_FILE=$PWD/ec4docker.config
+DEPLOY_NODES=False
+ASSUME_YES=False
+SETUP_CLUSTER=False
+TERMINATE_CLUSTER=False
+while [ $# -gt 0 ]; do
+    case $1 in
+        --create | -c)          SETUP_CLUSTER=True;;
+        --terminate | -t)       TERMINATE_CLUSTER=True;;
+        -ct | -tc )             SETUP_CLUSTER=True
+                                TERMINATE_CLUSTER=True;;
+        --deploy-nodes | -d)    DEPLOY_NODES=True;;
+	--yes | -y)		ASSUME_YES=True;;
+        --config-file | -f)     [ $# -lt 2 ] && usage && exit 1
+                                CONFIG_FILE=$2
+                                shift;;
+        --help | -h)            usage && exit 0;;
+        *)                      usage && exit 1;;
+    esac
+    shift
+done
+
+function EXIT_ERROR() {
+    echo "ERROR: $1" >&2
+    usage
+    exit 1
+}
+
+# Read the configuration if exists
+if [ ! -e "$CONFIG_FILE" ]; then
+    echo "WARNING: file $CONFIG_FILE does not exist... ignoring and getting default variables" >&2
+else
+    source $CONFIG_FILE
+fi
+
+# Set the default values if they are not set
+EC4DOCK_SERVERNAME=${EC4DOCK_SERVERNAME:-ec4docker}
+EC4DOCK_MAXNODES=${EC4DOCK_MAXNODES:-4}
+EC4DOCK_FRONTEND_IMAGENAME=${EC4DOCK_FRONTEND_IMAGENAME:-ec4docker:frontend}
+EC4DOCK_WN_IMAGENAME=${EC4DOCK_WN_IMAGENAME:-ec4docker:wn}
+EC4DOCK_NODEBASENAME=${EC4DOCK_NODEBASENAME:-ec4docknode}
+
+function find_nodes() {
+    # We'll try to find any docker container with the corresponding name whose associated server has
+    #   the provided IP.
+    IPADDR=$1
+    POSSIBLE_NODES=$(docker ps --format {{.Names}} | grep "$EC4DOCK_NODEBASENAME")
+    for N in $POSSIBLE_NODES; do
+        VARS=$(docker inspect -f '{{.Config.Env}}' $N | tr -d '[]' | tr ' ' '\n');
+        for V in $VARS; do
+            IFS=\= read VAR VALUE <<< $V
+            if [ "$VAR" == "EC4DOCK_SERVERIP" -a "$VALUE" == "$IPADDR" ]; then
+                    echo -n "$N "
+            fi
+        done
+    done
+}
+
+function frontend_exists() {
+    IPADDR=$(docker inspect -f '{{.NetworkSettings.IPAddress}}' $EC4DOCK_SERVERNAME 2> /dev/null)
+
+    if [ $? -eq 0 ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+function terminate_cluster() {
+    # Check if the server exists and get its IP address
+    IPADDR=$(docker inspect -f '{{.NetworkSettings.IPAddress}}' $EC4DOCK_SERVERNAME 2> /dev/null)
+    
+    # If the front-end exists, we'll try to terminate it
+    if [ $? -eq 0 ]; then
+            echo "A container with name $EC4DOCK_SERVERNAME already exists"
+            WNS=$(find_nodes $IPADDR)
+            if [ "$WNS" != "" ]; then
+                    echo "WARNING: Nodes '$WNS' seem to be part of the cluster"
+            fi
+            if [ "$ASSUME_YES" != "True" ]; then
+                    read -p "Do you want me to kill container(s)? (y/N) " KILL
+            else
+                    KILL=y
+            fi
+            if [ "$(echo $KILL | tr 'y' 'Y')" == "Y" ]; then
+                    for WNNAME in $WNS; do
+                            echo "killing container $WNNAME"
+                            docker stop $WNNAME > /dev/null 2> /dev/null
+                            docker rm $WNNAME > /dev/null 2> /dev/null
+                    done
+                    echo "killing container $EC4DOCK_SERVERNAME"
+                    docker stop $EC4DOCK_SERVERNAME > /dev/null 2> /dev/null
+                    docker rm $EC4DOCK_SERVERNAME > /dev/null 2> /dev/null
+            else
+                    exit 1
+            fi
+    fi
+}
+
+function setup_cluster() {
+
+    # We execute the container
+    # - we have to run it in privileged mode because of torque requirements
+    docker run -p 22 --privileged -v /var/run/docker.sock:/var/run/docker.sock -v $(which docker):$(which docker) -e "EC4DOCK_FRONTEND_IMAGENAME=$EC4DOCK_FRONTEND_IMAGENAME" -e "EC4DOCK_WN_IMAGENAME=$EC4DOCK_WN_IMAGENAME" -e "EC4DOCK_SERVERNAME=$EC4DOCK_SERVERNAME" -e "EC4DOCK_MAXNODES=$EC4DOCK_MAXNODES" -e "EC4DOCK_NODEBASENAME=$EC4DOCK_NODEBASENAME" -h $EC4DOCK_SERVERNAME --name $EC4DOCK_SERVERNAME -id $EC4DOCK_FRONTEND_IMAGENAME
+    
+    if [ $? -eq 0 ]; then
+        if [ "$DEPLOY_NODES" == "True" ]; then
+            echo "waiting a bit to deploy the frontend"
+            sleep 10s
+            for n in $(seq 1 $EC4DOCK_MAXNODES); do
+                NODENAME=${EC4DOCK_NODEBASENAME}${n}
+                echo -n "starting node $NODENAME ..."
+                docker exec $EC4DOCK_SERVERNAME /opt/ec4docker/poweron $NODENAME > /dev/null 2> /dev/null
+                if [ $? -eq 0 ]; then
+                    echo -e "[\e[32msucceeded\e[0m]"
+                else
+                    echo -e "[\e[31mfailed\e[0m]"
+                fi
+            done
+        fi
+    fi
+    return 0
+}
+
+if [ "$TERMINATE_CLUSTER" == "True" ]; then
+    terminate_cluster
+fi
+
+if [ "$SETUP_CLUSTER" == "True" ]; then
+    if frontend_exists; then
+        EXIT_ERROR "frontend already exists"
+    fi
+    setup_cluster
+fi
+
+if [ "$SETUP_CLUSTER" == "False" -a "$TERMINATE_CLUSTER" == "False" ]; then
+    echo "Neither --create or --terminate operations were stated, so we are doing nothing"
+fi
+
+exit 0
