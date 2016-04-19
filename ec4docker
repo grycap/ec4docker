@@ -75,7 +75,7 @@ while [ $n -le ${#ARR[$@]} ]; do
         --deploy-nodes | -d)    DEPLOY_NODES=True;;
 	--yes | -y)		ASSUME_YES=True;;
         --config-file | -f)     n=$(($n+1))
-                                [ $n -ge ${#ARR[$@]} ] && usage && exit 1
+                                [ $n -gt ${#ARR[$@]} ] && usage && exit 1
                                 CONFIG_FILE=${ARR[$n]};;
         --help | -h)            usage && exit 0;;
         *)                      usage && exit 1;;
