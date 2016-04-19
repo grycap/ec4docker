@@ -67,7 +67,7 @@ while [ $# -gt 0 ]; do
     shift
 done
 n=0
-while [ $n -le ${#ARR[$@]} ]; do
+while [ $n -lt ${#ARR[@]} ]; do
     case ${ARR[$n]} in
         --list | -l)            SHOW_CLUSTERS=True;;
         --create | -c)          SETUP_CLUSTER=True;;
@@ -75,7 +75,7 @@ while [ $n -le ${#ARR[$@]} ]; do
         --deploy-nodes | -d)    DEPLOY_NODES=True;;
 	--yes | -y)		ASSUME_YES=True;;
         --config-file | -f)     n=$(($n+1))
-                                [ $n -gt ${#ARR[$@]} ] && usage && exit 1
+                                [ $n -ge ${#ARR[@]} ] && usage && exit 1
                                 CONFIG_FILE=${ARR[$n]};;
         --help | -h)            usage && exit 0;;
         *)                      usage && exit 1;;
