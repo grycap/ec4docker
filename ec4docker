@@ -22,7 +22,7 @@
 function usage() {
     echo "
     USAGE:
-        $0 < [--create|-c] [--deploy-nodes|-d] | [--terminate|-t] > [ [ --config-file | -f ] <config-file> ] [ --help | -h ]"
+        $0 < [ --list | -l ] [--create|-c] [--deploy-nodes|-d] | [--terminate|-t] > [ [ --config-file | -f ] <config-file> ] [ --help | -h ]"
     echo "
 # EC4Docker - Elastic Cluster for Docker
 # https://github.com/grycap/ec4docker
@@ -50,21 +50,37 @@ DEPLOY_NODES=False
 ASSUME_YES=False
 SETUP_CLUSTER=False
 TERMINATE_CLUSTER=False
+SHOW_CLUSTERS=False
+MULTIFLAG=
+ARR=( )
+n=0
 while [ $# -gt 0 ]; do
-    case $1 in
+    if [ "${1:0:1}" == "-" -a "${1:1:2}" != "-" ]; then
+        for f in $(echo "${1:1}" | sed 's/\(.\)/-\1 /g' ); do
+            ARR[$n]="$f"
+            n=$(($n+1))
+        done
+    else
+        ARR[$n]="$1"
+        n=$(($n+1))
+    fi
+    shift
+done
+n=0
+while [ $n -le ${#ARR[$@]} ]; do
+    case ${ARR[$n]} in
+        --list | -l)            SHOW_CLUSTERS=True;;
         --create | -c)          SETUP_CLUSTER=True;;
         --terminate | -t)       TERMINATE_CLUSTER=True;;
-        -ct | -tc )             SETUP_CLUSTER=True
-                                TERMINATE_CLUSTER=True;;
         --deploy-nodes | -d)    DEPLOY_NODES=True;;
 	--yes | -y)		ASSUME_YES=True;;
-        --config-file | -f)     [ $# -lt 2 ] && usage && exit 1
-                                CONFIG_FILE=$2
-                                shift;;
+        --config-file | -f)     n=$(($n+1))
+                                [ $n -ge ${#ARR[$@]} ] && usage && exit 1
+                                CONFIG_FILE=${ARR[$n]};;
         --help | -h)            usage && exit 0;;
         *)                      usage && exit 1;;
     esac
-    shift
+    n=$(($n+1))
 done
 
 function EXIT_ERROR() {
@@ -93,7 +109,7 @@ function find_nodes() {
     # We'll try to find any docker container with the corresponding name whose associated server has
     #   the provided IP.
     IPADDR=$1
-    POSSIBLE_NODES=$(docker ps --format {{.Names}} | grep "$EC4DOCK_NODEBASENAME")
+    POSSIBLE_NODES=$(docker ps -a --format {{.Names}} | grep "$EC4DOCK_NODEBASENAME")
     for N in $POSSIBLE_NODES; do
         VARS=$(docker inspect -f '{{.Config.Env}}' $N | tr -d '[]' | tr ' ' '\n');
         for V in $VARS; do
@@ -170,6 +186,14 @@ function setup_cluster() {
     fi
     return 0
 }
+
+if [ "$SHOW_CLUSTERS" == "True" ]; then
+    IPADDR=$(docker inspect -f '{{.NetworkSettings.IPAddress}}' $EC4DOCK_SERVERNAME 2> /dev/null)
+    if [ $? -eq 0 ]; then
+        echo -n "A cluster with name $EC4DOCK_SERVERNAME is running with IP $IPADDR. Its nodes are: "
+        echo "$(find_nodes $IPADDR)"  
+    fi
+fi
 
 if [ "$TERMINATE_CLUSTER" == "True" ]; then
     terminate_cluster

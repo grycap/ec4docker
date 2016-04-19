@@ -25,7 +25,6 @@
 # Set the name of the container that acts as the server
 EC4DOCK_SERVERNAME=${EC4DOCK_SERVERNAME:-ec4docker}
 EC4DOCK_WN_IMAGENAME=${EC4DOCK_WN_IMAGENAME:-ec4docker:wn}
-EC4DOCK_WN_DOCKER_OPTIONS=${$EC4DOCK_WN_DOCKER_OPTIONS:-}
 
 [ $# -ne 1 ] && echo "usage: $0 <nodenameid>" && exit 1
 WN_NAME=$1
