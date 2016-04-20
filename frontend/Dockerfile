@@ -33,8 +33,12 @@ RUN apt-get update && apt-get install -y openssh-server nfs-common nfs-kernel-se
 # -------------------------------------------------------------------
 
 EXPOSE 22
-RUN useradd -m -s /bin/bash ubuntu
+RUN useradd -m -s /bin/bash ubuntu && sudo -u ubuntu ssh-keygen -N "" -f /home/ubuntu/.ssh/id_rsa && sudo -u ubuntu cp /home/ubuntu/.ssh/id_rsa.pub /home/ubuntu/.ssh/authorized_keys
+ADD ./commonfiles/config /home/ubuntu/.ssh/
+RUN chown ubuntu:ubuntu /home/ubuntu/.ssh/config
 RUN echo 'ubuntu:ubuntu' | chpasswd
+
+RUN ssh-keygen -N "" -f /root/.ssh/id_rsa && cp /root/.ssh/id_rsa.pub /root/.ssh/authorized_keys
 
 # -------------------------------------------------------------------
 # This is the part to install EC4Docker
