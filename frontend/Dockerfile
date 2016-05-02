@@ -18,7 +18,7 @@
 # limitations under the License.
 #
 
-FROM ubuntu
+FROM ubuntu:14.04.4
 MAINTAINER Carlos de Alfonso <caralla@upv.es>
 
 # -------------------------------------------------------------------
@@ -32,6 +32,7 @@ RUN apt-get update && apt-get install -y openssh-server nfs-common nfs-kernel-se
 # This is the part to enable SSH access
 # -------------------------------------------------------------------
 
+RUN apt-get install sudo
 EXPOSE 22
 RUN useradd -m -s /bin/bash ubuntu && sudo -u ubuntu ssh-keygen -N "" -f /home/ubuntu/.ssh/id_rsa && sudo -u ubuntu cp /home/ubuntu/.ssh/id_rsa.pub /home/ubuntu/.ssh/authorized_keys
 ADD ./commonfiles/config /home/ubuntu/.ssh/
@@ -45,7 +46,7 @@ RUN ssh-keygen -N "" -f /root/.ssh/id_rsa && cp /root/.ssh/id_rsa.pub /root/.ssh
 # -------------------------------------------------------------------
 
 # Packages to be able to run docker from inside the container
-RUN apt-get -y install libnfnetlink0 libsystemd-journal0 libapparmor1
+RUN apt-get -y install libnfnetlink0 libapparmor1 libsystemd-journal0 libltdl7
 
 ADD ./poweron ./poweroff ./add-node ./remove-node /opt/ec4docker/
 
