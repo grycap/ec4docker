@@ -18,7 +18,7 @@
 # limitations under the License.
 #
 
-FROM ubuntu:14.04.4
+FROM ubuntu
 MAINTAINER Carlos de Alfonso <caralla@upv.es>
 
 # -------------------------------------------------------------------
@@ -45,8 +45,8 @@ RUN ssh-keygen -N "" -f /root/.ssh/id_rsa && cp /root/.ssh/id_rsa.pub /root/.ssh
 # This is the part to install EC4Docker
 # -------------------------------------------------------------------
 
-# Packages to be able to run docker from inside the container
-RUN apt-get -y install libnfnetlink0 libapparmor1 libsystemd-journal0 libltdl7
+# Install the docker binary to be able to run docker from inside the container
+RUN apt-get -y install curl && curl -sSL https://get.docker.com/ | sh
 
 ADD ./poweron ./poweroff ./add-node ./remove-node /opt/ec4docker/
 
