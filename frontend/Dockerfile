@@ -18,7 +18,7 @@
 # limitations under the License.
 #
 
-FROM ubuntu
+FROM ubuntu:14.04.4
 MAINTAINER Carlos de Alfonso <caralla@upv.es>
 
 # -------------------------------------------------------------------
@@ -26,7 +26,7 @@ MAINTAINER Carlos de Alfonso <caralla@upv.es>
 # -------------------------------------------------------------------
 
 # Basic files for NFS and SSH
-RUN apt-get update && apt-get install -y openssh-server nfs-common nfs-kernel-server
+RUN apt-get update && apt-get install -y openssh-server nfs-common nfs-kernel-server vim
 
 # -------------------------------------------------------------------
 # This is the part to enable SSH access
