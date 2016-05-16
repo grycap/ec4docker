@@ -25,22 +25,27 @@
 # Set the name of the container that acts as the server
 EC4DOCK_SERVERNAME=${EC4DOCK_SERVERNAME:-ec4docker}
 EC4DOCK_WN_IMAGENAME=${EC4DOCK_WN_IMAGENAME:-ec4docker:wn}
+DOCKERCMD=docker
+[ "$EC4DOCK_DOCKER_NODE" != "" ] &&  DOCKERCMD="docker -H $EC4DOCK_DOCKER_NODE"
+NETWORK_STR=
+IPFIELD="{{.NetworkSettings.IPAddress}}"
+[ "$EC4DOCK_DOCKER_NETWORK" != "" ] && NETWORK_STR="--net=$EC4DOCK_DOCKER_NETWORK" && IPFIELD="{{.NetworkSettings.Networks.$EC4DOCK_DOCKER_NETWORK.IPAddress}}"
 
 [ $# -ne 1 ] && echo "usage: $0 <nodenameid>" && exit 1
 WN_NAME=$1
 
 # Get the server IP address
-EC4DOCK_SERVERIP=$(docker inspect -f '{{.NetworkSettings.IPAddress}}' $EC4DOCK_SERVERNAME)
+EC4DOCK_SERVERIP=$($DOCKERCMD inspect -f "$IPFIELD" $EC4DOCK_SERVERNAME)
 [ $? -ne 0 ] && echo "could not get ip from server $EC4DOCK_SERVERNAME" && exit 1
 
 (
 # Create a new container
-WN_CONTAINERNAME=$(docker run -h $WN_NAME --privileged $EC4DOCK_WN_DOCKER_OPTIONS -e EC4DOCK_WN_DOCKER_OPTIONS="$EC4DOCK_WN_DOCKER_OPTIONS" -e "EC4DOCK_SERVERIP=$EC4DOCK_SERVERIP" -e "EC4DOCK_SERVERNAME=$EC4DOCK_SERVERNAME" --name $WN_NAME -id $EC4DOCK_WN_IMAGENAME)
+WN_CONTAINERNAME=$($DOCKERCMD run -h $WN_NAME --privileged $EC4DOCK_WN_DOCKER_OPTIONS $NETWORK_STR -e EC4DOCK_WN_DOCKER_OPTIONS="$EC4DOCK_WN_DOCKER_OPTIONS" -e "EC4DOCK_SERVERIP=$EC4DOCK_SERVERIP" -e "EC4DOCK_SERVERNAME=$EC4DOCK_SERVERNAME" --name $WN_NAME -id $EC4DOCK_WN_IMAGENAME)
 [ $? -ne 0 ] && echo "could not create the new node $WN_NAME" && exit 1
 
 # We get the IP address for the new node
-WN_IPADDR=$(docker inspect -f '{{.NetworkSettings.IPAddress}}' $WN_CONTAINERNAME)
-[ $? -ne 0 -o "$WN_IPADDR" == "" ] && echo "could not determine the IP address for the new node" && docker rm $(docker stop $WM_CONTAINERNAME) && exit 1
+WN_IPADDR=$($DOCKERCMD inspect -f "$IPFIELD" $WN_CONTAINERNAME)
+[ $? -ne 0 -o "$WN_IPADDR" == "" ] && echo "could not determine the IP address for the new node" && $DOCKERCMD rm $($DOCKERCMD stop $WM_CONTAINERNAME) && exit 1
 
 # We have to remove the entries in /etc/hosts that correspond to the node name
 cat /etc/hosts | sed "/${WN_NAME}$/d" > /tmp/newhosts 

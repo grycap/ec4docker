@@ -19,20 +19,25 @@
 # limitations under the License.
 #
 
+# We'll get the configuration if it exists
+[ -f /etc/ec4docker/ec4docker.conf ] && source /etc/ec4docker/ec4docker.conf
+DOCKERCMD=docker
+[ "$EC4DOCK_DOCKER_NODE" != "" ] &&  DOCKERCMD="docker -H $EC4DOCK_DOCKER_NODE"
+
 [ $# -ne 1 ] && echo "usage: $0 <nodename>" && exit 1
 WN_NAME=$1
 
 # Get info about the node just to test that it exists in docker
-docker inspect $WN_NAME > /dev/null 2> /dev/null
+$DOCKERCMD inspect $WN_NAME > /dev/null 2> /dev/null
 [ $? -ne 0 ] && echo "could not find any container with name $WN_NAME" && exit 1
 
 # We'll stop the node
-docker stop $WN_NAME > /dev/null 2> /dev/null
+$DOCKERCMD stop $WN_NAME > /dev/null 2> /dev/null
 [ $? -ne 0 ] && echo "could not stop container with name $WN_NAME" && exit 1
 
 (
 # Then we delete the node
-docker rm $WN_NAME > /dev/null 2> /dev/null
+$DOCKERCMD rm $WN_NAME > /dev/null 2> /dev/null
 [ $? -ne 0 ] && echo "could not remove container with name $WN_NAME"
 
 # We have to remove the entries in /etc/hosts that correspond to the node name
