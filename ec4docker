@@ -52,6 +52,8 @@ SETUP_CLUSTER=False
 TERMINATE_CLUSTER=False
 SHOW_CLUSTERS=False
 MULTIFLAG=
+DOCKER_NODE=
+DOCKER_NETWORK=
 ARR=( )
 n=0
 while [ $# -gt 0 ]; do
@@ -68,7 +70,13 @@ while [ $# -gt 0 ]; do
 done
 n=0
 while [ $n -lt ${#ARR[@]} ]; do
-    case ${ARR[$n]} in
+    case "${ARR[$n]}" in
+        --net | -n)             n=$(($n+1))
+                                [ $n -ge ${#ARR[@]} ] && usage && exit 1
+                                DOCKER_NETWORK="${ARR[$n]}";;
+        --docker-host | -H)     n=$(($n+1))
+                                [ $n -ge ${#ARR[@]} ] && usage && exit 1
+                                DOCKER_NODE="${ARR[$n]}";;
         --list | -l)            SHOW_CLUSTERS=True;;
         --create | -c)          SETUP_CLUSTER=True;;
         --terminate | -t)       TERMINATE_CLUSTER=True;;
@@ -76,7 +84,7 @@ while [ $n -lt ${#ARR[@]} ]; do
 	--yes | -y)		ASSUME_YES=True;;
         --config-file | -f)     n=$(($n+1))
                                 [ $n -ge ${#ARR[@]} ] && usage && exit 1
-                                CONFIG_FILE=${ARR[$n]};;
+                                CONFIG_FILE="${ARR[$n]}";;
         --help | -h)            usage && exit 0;;
         *)                      usage && exit 1;;
     esac
@@ -96,6 +104,11 @@ else
     source $CONFIG_FILE
 fi
 
+DOCKERCMD=docker
+[ "$DOCKER_NODE" != "" ] && DOCKERCMD="docker -H $DOCKER_NODE"
+NETWORK_STR=
+[ "$DOCKER_NETWORK" != "" ] && NETWORK_STR="--net=$DOCKER_NETWORK"
+
 # Set the default values if they are not set
 EC4DOCK_SERVERNAME=${EC4DOCK_SERVERNAME:-ec4docker}
 EC4DOCK_MAXNODES=${EC4DOCK_MAXNODES:-4}
@@ -104,14 +117,18 @@ EC4DOCK_WN_IMAGENAME=${EC4DOCK_WN_IMAGENAME:-ec4docker:wn}
 EC4DOCK_NODEBASENAME=${EC4DOCK_NODEBASENAME:-ec4docknode}
 EC4DOCK_FRONTEND_DOCKER_OPTIONS=${EC4DOCK_FRONTEND_DOCKER_OPTIONS:-}
 EC4DOCK_WN_DOCKER_OPTIONS=${EC4DOCK_WN_DOCKER_OPTIONS:-}
+EC4DOCK_DOCKER_NETWORK=$DOCKER_NETWORK
+
+IPFIELD="{{.NetworkSettings.IPAddress}}"
+[ "$EC4DOCK_DOCKER_NETWORK" != "" ] && IPFIELD="{{.NetworkSettings.Networks.$EC4DOCK_DOCKER_NETWORK.IPAddress}}"
 
 function find_nodes() {
     # We'll try to find any docker container with the corresponding name whose associated server has
     #   the provided IP.
     IPADDR=$1
-    POSSIBLE_NODES=$(docker ps -a --format {{.Names}} | grep "$EC4DOCK_NODEBASENAME")
+    POSSIBLE_NODES=$($DOCKERCMD ps -a --format {{.Names}} | grep "$EC4DOCK_NODEBASENAME")
     for N in $POSSIBLE_NODES; do
-        VARS=$(docker inspect -f '{{.Config.Env}}' $N | tr -d '[]' | tr ' ' '\n');
+        VARS=$($DOCKERCMD inspect -f '{{.Config.Env}}' $N | tr -d '[]' | tr ' ' '\n');
         for V in $VARS; do
             IFS=\= read VAR VALUE <<< $V
             if [ "$VAR" == "EC4DOCK_SERVERIP" -a "$VALUE" == "$IPADDR" ]; then
@@ -122,8 +139,7 @@ function find_nodes() {
 }
 
 function frontend_exists() {
-    IPADDR=$(docker inspect -f '{{.NetworkSettings.IPAddress}}' $EC4DOCK_SERVERNAME 2> /dev/null)
-
+    IPADDR=$($DOCKERCMD inspect -f "$IPFIELD" $EC4DOCK_SERVERNAME 2> /dev/null)
     if [ $? -eq 0 ]; then
         return 0
     else
@@ -132,11 +148,12 @@ function frontend_exists() {
 }
 
 function terminate_cluster() {
-    # Check if the server exists and get its IP address
-    IPADDR=$(docker inspect -f '{{.NetworkSettings.IPAddress}}' $EC4DOCK_SERVERNAME 2> /dev/null)
+    # Check if the server exists and get its IP addresses
+    IPADDRESSES="$IPADDR $($DOCKERCMD inspect -f "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}" $EC4DOCK_SERVERNAME 2> /dev/null)"
     
     # If the front-end exists, we'll try to terminate it
     if [ $? -eq 0 ]; then
+        for IPADDR in $IPADDRESSES; do
             echo "A container with name $EC4DOCK_SERVERNAME already exists"
             WNS=$(find_nodes $IPADDR)
             if [ "$WNS" != "" ]; then
@@ -150,15 +167,16 @@ function terminate_cluster() {
             if [ "$(echo $KILL | tr 'y' 'Y')" == "Y" ]; then
                     for WNNAME in $WNS; do
                             echo "killing container $WNNAME"
-                            docker stop $WNNAME > /dev/null 2> /dev/null
-                            docker rm $WNNAME > /dev/null 2> /dev/null
+                            $DOCKERCMD stop $WNNAME > /dev/null 2> /dev/null
+                            $DOCKERCMD rm $WNNAME > /dev/null 2> /dev/null
                     done
                     echo "killing container $EC4DOCK_SERVERNAME"
-                    docker stop $EC4DOCK_SERVERNAME > /dev/null 2> /dev/null
-                    docker rm $EC4DOCK_SERVERNAME > /dev/null 2> /dev/null
+                    $DOCKERCMD stop $EC4DOCK_SERVERNAME > /dev/null 2> /dev/null
+                    $DOCKERCMD rm $EC4DOCK_SERVERNAME > /dev/null 2> /dev/null
             else
                     exit 1
             fi
+        done
     fi
 }
 
@@ -166,7 +184,7 @@ function setup_cluster() {
 
     # We execute the container
     # - we have to run it in privileged mode because of torque requirements
-    docker run -p 22 --privileged -v /var/run/docker.sock:/var/run/docker.sock $EC4DOCK_FRONTEND_DOCKER_OPTIONS -e EC4DOCK_WN_DOCKER_OPTIONS="$EC4DOCK_WN_DOCKER_OPTIONS" -e EC4DOCK_FRONTEND_DOCKER_OPTIONS="$EC4DOCK_FRONTEND_DOCKER_OPTIONS" -e "EC4DOCK_FRONTEND_IMAGENAME=$EC4DOCK_FRONTEND_IMAGENAME" -e "EC4DOCK_WN_IMAGENAME=$EC4DOCK_WN_IMAGENAME" -e "EC4DOCK_SERVERNAME=$EC4DOCK_SERVERNAME" -e "EC4DOCK_MAXNODES=$EC4DOCK_MAXNODES" -e "EC4DOCK_NODEBASENAME=$EC4DOCK_NODEBASENAME" -h $EC4DOCK_SERVERNAME --name $EC4DOCK_SERVERNAME -id $EC4DOCK_FRONTEND_IMAGENAME
+    $DOCKERCMD run -p 22 --privileged -v /var/run/docker.sock:/var/run/docker.sock $NETWORK_STR $EC4DOCK_FRONTEND_DOCKER_OPTIONS -e EC4DOCK_DOCKER_NETWORK="$DOCKER_NETWORK" -e EC4DOCK_DOCKER_NODE=$DOCKER_NODE -e EC4DOCK_WN_DOCKER_OPTIONS="$EC4DOCK_WN_DOCKER_OPTIONS" -e EC4DOCK_FRONTEND_DOCKER_OPTIONS="$EC4DOCK_FRONTEND_DOCKER_OPTIONS" -e "EC4DOCK_FRONTEND_IMAGENAME=$EC4DOCK_FRONTEND_IMAGENAME" -e "EC4DOCK_WN_IMAGENAME=$EC4DOCK_WN_IMAGENAME" -e "EC4DOCK_SERVERNAME=$EC4DOCK_SERVERNAME" -e "EC4DOCK_MAXNODES=$EC4DOCK_MAXNODES" -e "EC4DOCK_NODEBASENAME=$EC4DOCK_NODEBASENAME" -h $EC4DOCK_SERVERNAME --name $EC4DOCK_SERVERNAME -id $EC4DOCK_FRONTEND_IMAGENAME
     
     if [ $? -eq 0 ]; then
         if [ "$DEPLOY_NODES" == "True" ]; then
@@ -175,7 +193,7 @@ function setup_cluster() {
             for n in $(seq 1 $EC4DOCK_MAXNODES); do
                 NODENAME=${EC4DOCK_NODEBASENAME}${n}
                 echo -n "starting node $NODENAME ..."
-                docker exec $EC4DOCK_SERVERNAME /opt/ec4docker/poweron $NODENAME > /dev/null 2> /dev/null
+                $DOCKERCMD exec $EC4DOCK_SERVERNAME /opt/ec4docker/poweron $NODENAME > /dev/null 2> /dev/null
                 if [ $? -eq 0 ]; then
                     echo -e "[\e[32msucceeded\e[0m]"
                 else
@@ -188,7 +206,8 @@ function setup_cluster() {
 }
 
 if [ "$SHOW_CLUSTERS" == "True" ]; then
-    IPADDR=$(docker inspect -f '{{.NetworkSettings.IPAddress}}' $EC4DOCK_SERVERNAME 2> /dev/null)
+    IPADDR=$($DOCKERCMD inspect -f "$IPFIELD" $EC4DOCK_SERVERNAME 2> /dev/null)
+
     if [ $? -eq 0 ]; then
         echo -n "A cluster with name $EC4DOCK_SERVERNAME is running with IP $IPADDR. Its nodes are: "
         echo "$(find_nodes $IPADDR)"  
