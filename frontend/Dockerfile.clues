@@ -18,7 +18,7 @@
 # limitations under the License.
 #
 
-FROM ubuntu
+FROM ubuntu:14.04.4
 MAINTAINER Carlos de Alfonso <caralla@upv.es>
 
 # -------------------------------------------------------------------
