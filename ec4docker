@@ -55,6 +55,13 @@ MULTIFLAG=
 DOCKER_NODE=
 DOCKER_NETWORK=
 ARR=( )
+
+CMDLINE_EC4DOCK_SERVERNAME=
+CMDLINE_EC4DOCK_MAXNODES=
+CMDLINE_EC4DOCK_FRONTEND_IMAGENAME=
+CMDLINE_EC4DOCK_WN_IMAGENAME=
+CMDLINE_EC4DOCK_NODEBASENAME=
+
 n=0
 while [ $# -gt 0 ]; do
     if [ "${1:0:1}" == "-" -a "${1:1:1}" != "-" ]; then
@@ -71,6 +78,21 @@ done
 n=0
 while [ $n -lt ${#ARR[@]} ]; do
     case "${ARR[$n]}" in
+        --server-name | -s)     n=$(($n+1))
+                                [ $n -ge ${#ARR[@]} ] && usage && exit 1
+                                CMDLINE_EC4DOCK_SERVERNAME="${ARR[$n]}";;
+        --node-count | -N)      n=$(($n+1))
+                                [ $n -ge ${#ARR[@]} ] && usage && exit 1
+                                CMDLINE_EC4DOCK_MAXNODES="${ARR[$n]}";;
+        --front-end-image | -F) n=$(($n+1))
+                                [ $n -ge ${#ARR[@]} ] && usage && exit 1
+                                CMDLINE_EC4DOCK_FRONTEND_IMAGENAME="${ARR[$n]}";;
+        --working-node-image | -w)  n=$(($n+1))
+                                [ $n -ge ${#ARR[@]} ] && usage && exit 1
+                                CMDLINE_EC4DOCK_WN_IMAGENAME="${ARR[$n]}";;
+        --node-basename | -b)   n=$(($n+1))
+                                [ $n -ge ${#ARR[@]} ] && usage && exit 1
+                                CMDLINE_EC4DOCK_NODEBASENAME="${ARR[$n]}";;
         --net | -n)             n=$(($n+1))
                                 [ $n -ge ${#ARR[@]} ] && usage && exit 1
                                 DOCKER_NETWORK="${ARR[$n]}";;
@@ -118,6 +140,13 @@ EC4DOCK_NODEBASENAME=${EC4DOCK_NODEBASENAME:-ec4docknode}
 EC4DOCK_FRONTEND_DOCKER_OPTIONS=${EC4DOCK_FRONTEND_DOCKER_OPTIONS:-}
 EC4DOCK_WN_DOCKER_OPTIONS=${EC4DOCK_WN_DOCKER_OPTIONS:-}
 EC4DOCK_DOCKER_NETWORK=$DOCKER_NETWORK
+
+# Check if some values are overridden in commandline
+[ "$CMDLINE_EC4DOCK_SERVERNAME" != "" ] && EC4DOCK_SERVERNAME="$CMDLINE_EC4DOCK_SERVERNAME"
+[ "$CMDLINE_EC4DOCK_MAXNODES" != "" ] && EC4DOCK_MAXNODES="$CMDLINE_EC4DOCK_MAXNODES"
+[ "$CMDLINE_EC4DOCK_FRONTEND_IMAGENAME" != "" ] && EC4DOCK_FRONTEND_IMAGENAME="$CMDLINE_EC4DOCK_FRONTEND_IMAGENAME"
+[ "$CMDLINE_EC4DOCK_WN_IMAGENAME" != "" ] && EC4DOCK_WN_IMAGENAME="$CMDLINE_EC4DOCK_WN_IMAGENAME"
+[ "$CMDLINE_EC4DOCK_NODEBASENAME" != "" ] && EC4DOCK_NODEBASENAME="$CMDLINE_EC4DOCK_NODEBASENAME"
 
 IPFIELD="{{.NetworkSettings.IPAddress}}"
 [ "$EC4DOCK_DOCKER_NETWORK" != "" ] && IPFIELD="{{.NetworkSettings.Networks.$EC4DOCK_DOCKER_NETWORK.IPAddress}}"
