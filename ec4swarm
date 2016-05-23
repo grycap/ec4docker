@@ -1,0 +1,154 @@
+#!/bin/bash
+#
+# EC4Docker - Elastic Cluster for Docker
+# https://github.com/grycap/ec4docker
+#
+# Copyright (C) GRyCAP - I3M - UPV 
+# Developed by Carlos A. caralla@upv.es
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+DOCKERCMD=docker
+CURL=$(which curl)
+IPFLOATER_NODE=http://localhost:7003
+EC4DOCKER=
+if [ -x "./ec4docker" ]; then
+    EC4DOCKER=./ec4docker
+else
+    EC4DOCKER=$(which ec4docker)
+fi
+if [ "$EC4DOCKER" = "" ]; then
+    echo "could not find 'ec4docker' neither in the path nor in the current folder. Please install it and try to run this command again"
+    exit 1
+fi
+if [ "$CURL" == "" ]; then
+    echo "Could not find 'curl' which is needed to use the REST API from IPFloater. Please install it and try to run this command again"
+    exit 1
+fi
+
+
+ARR=( )
+n=0
+while [ $# -gt 0 ]; do
+    if [ "${1:0:1}" == "-" -a "${1:1:1}" != "-" ]; then
+        for f in $(echo "${1:1}" | sed 's/\(.\)/-\1 /g' ); do
+            ARR[$n]="$f"
+            n=$(($n+1))
+        done
+    else
+        ARR[$n]="$1"
+        n=$(($n+1))
+    fi
+    shift
+done
+
+SETUP_CLUSTER=False
+TERMINATE_CLUSTER=False
+NEW_ARGS=( )
+n=0
+while [ $n -lt ${#ARR[@]} ]; do
+    case "${ARR[$n]}" in
+        --ip-floater | -i)      n=$(($n+1))
+                                [ $n -ge ${#ARR[@]} ] && usage && exit 1
+                                IPFLOATER_NODE="${ARR[$n]}";;
+        --create | -c)          SETUP_CLUSTER=True;;
+        --terminate | -t)       TERMINATE_CLUSTER=True;;
+        *)                      NEW_ARGS+=("${ARR[$n]}");;
+    esac
+    n=$(($n+1))
+done
+
+BASIC_INFO=$($CURL -sXGET "${IPFLOATER_NODE}")
+if [ $? -ne 0 ]; then
+    echo "Could not contact with the IPFloater server ${IPFLOATER_NODE}. Please double check it with the command $CURL -XGET ${IPFLOATER_NODE}"
+    exit 1
+fi
+
+# Here we have stripped out the creation or deletion of the cluster... lets check if there is a deletion from the cluster, first
+if [ "$TERMINATE_CLUSTER" == "True" ]; then
+    # We should delete the redirection and then delete the cluster
+    VARS=$($EC4DOCKER "${NEW_ARGS[@]}" --vars)
+    if [ $? -eq 0 ]; then
+        source <(echo "$VARS" | grep '=')
+        DOCKERCMD="docker -H $EC4DOCK_DOCKER_NODE"
+        IP_PORT=$($DOCKERCMD inspect -f '{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostIp}}/{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}' $EC4DOCK_SERVERNAME)
+        if [ $? -eq 0 ]; then
+            JSON=$($CURL -sfXGET http://$IPFLOATER_NODE/private/$IP_PORT)
+            if [ $? -ne 0 ]; then
+                echo "Could not find any redirection to $IP_PORT... skipping"
+            else
+                RESULT=$($CURL -sfXDELETE http://$IPFLOATER_NODE/private/$IP_PORT)
+                if [ $? -ne 0 ]; then
+                    echo "Could not remove the redirection for container $EC4DOCK_SERVERNAME although it seems to exist"
+                    echo "failed on call: "
+                    echo "$CURL -sfXGET http://$IPFLOATER_NODE/private/$IP_PORT"
+                    echo "(the cluster has not been launched)"
+                    exit 1
+                fi
+            fi
+        else
+            echo "could not obtain the IP and PORT for container $EC4DOCK_SERVERNAME"
+            exit 1
+        fi
+    else
+        echo "an error happened trying to read the variables for the cluster"
+        echo "failed on call: "
+        echo $EC4DOCKER "${NEW_ARGS[@]}" --vars
+        echo "(the cluster has not been launched)"
+        exit 1
+    fi
+    RESULT=$($EC4DOCKER "${NEW_ARGS[@]}" --vars --terminate)
+    if [ $? -ne 0 ]; then
+        echo "an error happened terminating the cluster"
+        echo "failed on call: "
+        echo $EC4DOCKER "${NEW_ARGS[@]}" --vars --terminate
+        echo "$RESULT"
+        exit 1
+    fi
+fi
+
+if [ "$SETUP_CLUSTER" == "True" ]; then
+    VARS=$($EC4DOCKER "${NEW_ARGS[@]}" --vars --create)
+    if [ $? -eq 0 ]; then
+        source <(echo "$VARS" | grep '=')
+        DOCKERCMD="docker -H $EC4DOCK_DOCKER_NODE"
+        
+        IP_PORT=$($DOCKERCMD inspect -f '{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostIp}}/{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}' $EC4DOCK_SERVERNAME)
+        if [ $? -eq 0 ]; then
+            JSON=$($CURL -sfXGET http://$IPFLOATER_NODE/private/$IP_PORT)
+            if [ $? -eq 0 ]; then
+                echo "Redirection already existed before trying to create it"
+            else
+                JSON=$($CURL -sfXPUT http://$IPFLOATER_NODE/public/redirect/$IP_PORT)
+                if [ $? -ne 0 ]; then
+                    echo "Could not create the redirection for container $EC4DOCK_SERVERNAME"
+                    echo "Does the redirection already exist?"
+                    echo "failed on call: "
+                    echo "$CURL -sXPUT http://$IPFLOATER_NODE/public/redirect/$IP_PORT"
+                    exit 1
+                fi
+            fi
+            read IP PORT <<< $(echo "$JSON" | jq '.public_ip,.public_port'  | sed 's/^"\(.*\)"$/\1/')
+            echo $IP:$PORT
+        else
+            echo "could not obtain the IP and PORT for container $EC4DOCK_SERVERNAME"
+            exit 1
+        fi
+    else
+        echo "an error happened creating the cluster"
+        echo "failed on call: "
+        echo $EC4DOCKER "${NEW_ARGS[@]}" --vars --create
+        echo "$RESULT"
+        exit 1
+    fi
+fi

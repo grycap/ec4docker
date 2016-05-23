@@ -54,6 +54,7 @@ SHOW_CLUSTERS=False
 MULTIFLAG=
 DOCKER_NODE=
 DOCKER_NETWORK=
+SHOW_VARS=False
 ARR=( )
 
 CMDLINE_EC4DOCK_SERVERNAME=
@@ -78,6 +79,7 @@ done
 n=0
 while [ $n -lt ${#ARR[@]} ]; do
     case "${ARR[$n]}" in
+        --vars )                SHOW_VARS=True;;
         --server-name | -s)     n=$(($n+1))
                                 [ $n -ge ${#ARR[@]} ] && usage && exit 1
                                 CMDLINE_EC4DOCK_SERVERNAME="${ARR[$n]}";;
@@ -107,7 +109,7 @@ while [ $n -lt ${#ARR[@]} ]; do
         --config-file | -f)     n=$(($n+1))
                                 [ $n -ge ${#ARR[@]} ] && usage && exit 1
                                 CONFIG_FILE="${ARR[$n]}";;
-        --help | -h)            usage && exit 0;;
+        --help | -h)            usage && exit 1;;
         *)                      usage && exit 1;;
     esac
     n=$(($n+1))
@@ -140,6 +142,7 @@ EC4DOCK_NODEBASENAME=${EC4DOCK_NODEBASENAME:-ec4docknode}
 EC4DOCK_FRONTEND_DOCKER_OPTIONS=${EC4DOCK_FRONTEND_DOCKER_OPTIONS:-}
 EC4DOCK_WN_DOCKER_OPTIONS=${EC4DOCK_WN_DOCKER_OPTIONS:-}
 EC4DOCK_DOCKER_NETWORK=$DOCKER_NETWORK
+EC4DOCK_DOCKER_NODE=$DOCKER_NODE
 
 # Check if some values are overridden in commandline
 [ "$CMDLINE_EC4DOCK_SERVERNAME" != "" ] && EC4DOCK_SERVERNAME="$CMDLINE_EC4DOCK_SERVERNAME"
@@ -260,8 +263,15 @@ if [ "$SETUP_CLUSTER" == "True" ]; then
     setup_cluster
 fi
 
-if [ "$SETUP_CLUSTER" == "False" -a "$TERMINATE_CLUSTER" == "False" ]; then
-    echo "Neither --create or --terminate operations were stated, so we are doing nothing"
+if [ "$SHOW_VARS" == "True" ]; then
+    (set -o posix ; set | grep '^EC4DOCK_' | cut -d= -f1 | while read var; do printf "%s=%q\n" "$var" "${!var}"; done)
+    # bash only
+    # compgen -v | grep '^EC4DOCK_' | while read var; do printf "%s=%q\n" "$var" "${!var}"; done
 fi
+
+if [ "$SETUP_CLUSTER" == "False" -a "$TERMINATE_CLUSTER" == "False" -a "$SHOW_VARS" == "Fals" ]; then
+    echo "Neither --create, --terminate or --vars operations were stated, so we are doing nothing"
+fi
+
 
 exit 0
