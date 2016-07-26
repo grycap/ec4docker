@@ -24,7 +24,7 @@ Once selected, you need to build the build the _front-end_ and _working node_ ba
 
 ```bash
 docker build -f frontend/Dockerfile.clues -t ec4docker:frontend ./frontend/
-docker build -f wn/Dockerfile.wn -t ec4docker:wn wn/
+docker build -f wn/Dockerfile -t ec4docker:wn wn/
 ```
 
 Then you need to create the images that correspond to the middleware:
@@ -46,7 +46,7 @@ Alternatively you can build the non-elastic version: by not installing CLUES in 
 
 ```bash
 docker build -f frontend/Dockerfile.static -t ec4docker:frontend ./frontend/
-docker build -f wn/Dockerfile.wn -t ec4docker:wn wn/
+docker build -f wn/Dockerfile -t ec4docker:wn wn/
 ```
 
 In this case you need to power the nodes on or of by hand (using the provided scripts in folder _/opt/ec4docker_).
