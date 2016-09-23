@@ -87,7 +87,7 @@ $ modprobe nfsd
 
 In order to create your cluster, defined in _ec4docker-torque.config_ file, you can issue the following command:
 ```bash
-$ ./setup-cluster -f ec4docker-torque.config
+$ ./ec4docker -ct -f ec4docker-torque.config
 ```
 
 __NOTE__: The settings of the clusters are those that are set in file _ec4docker-torque.config_ file. Take note of those settings because you will need them in order to access the cluster. In special, the name of the cluster which is in _EC4DOCK_SERVERNAME_.
